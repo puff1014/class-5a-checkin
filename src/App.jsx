@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, orderBy, limit, serverTimestamp, increment } from 'firebase/firestore';
-import { Clock, Ship, Anchor, CheckCircle2, Waves, ScrollText, Send, Star, Megaphone, UserX, Lock, Unlock, Calendar, PlusCircle, Tag } from 'lucide-react';
+import { Clock, Ship, Anchor, CheckCircle2, Waves, ScrollText, Send, Star, Megaphone, UserX, Lock, Calendar, Plus, Minus, Type, AlignVerticalJustifyStart, AlignHorizontalJustifyStart, FileJson, Upload, Download } from 'lucide-react';
+
+// 版本號碼
+const APP_VERSION = "v2.0.260220";
 
 const firebaseConfig = {
   apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8",
@@ -33,12 +36,17 @@ const App = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [attendance, setAttendance] = useState({});
   const [hwChecked, setHwChecked] = useState({});
+  
+  // 新增：視覺與佈局狀態
+  const [splitRatio, setSplitRatio] = useState(60); // 左側佔比 %
+  const [fontSize, setFontSize] = useState(32); // 聯絡簿字體 px
+  const [isVertical, setIsVertical] = useState(false); // 是否直式書寫
+  const splitContainerRef = useRef(null);
 
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
     const firestore = getFirestore(app);
     setDb(firestore);
-
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     
     const q = query(collection(firestore, `/artifacts/class-5a-app/public/data/announcements`), orderBy("createdAt", "desc"), limit(1));
@@ -50,24 +58,35 @@ const App = () => {
       }
     });
 
-    const unsubAttendance = onSnapshot(collection(firestore, `/artifacts/class-5a-app/public/data/attendance`), (snapshot) => {
+    onSnapshot(collection(firestore, `/artifacts/class-5a-app/public/data/attendance`), (snapshot) => {
       const attData = {};
       snapshot.forEach(doc => attData[doc.id] = doc.data().status);
       setAttendance(attData);
     });
 
-    return () => { clearInterval(timer); unsubAnnounce(); unsubAttendance(); };
+    return () => { clearInterval(timer); unsubAnnounce(); };
   }, []);
+
+  // 處理分屏拖動
+  const handleMouseDown = (e) => {
+    const handleMouseMove = (moveEvent) => {
+      if (splitContainerRef.current) {
+        const containerWidth = splitContainerRef.current.offsetWidth;
+        let newRatio = (moveEvent.clientX / containerWidth) * 100;
+        if (newRatio > 30 && newRatio < 80) setSplitRatio(newRatio);
+      }
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   const handleLogin = () => {
     const pw = prompt("請輸入導航員密碼：");
     if (pw === "123+++") setIsTeacher(true);
-    else alert("密碼錯誤，請重試！");
-  };
-
-  const updateAttendance = async (studentId, status) => {
-    await setDoc(doc(db, `/artifacts/class-5a-app/public/data/attendance`, studentId), { status, updatedAt: serverTimestamp() });
-    alert(`已標記為 ${status}`);
   };
 
   const handlePostAnnouncement = async () => {
@@ -78,84 +97,114 @@ const App = () => {
       createdAt: serverTimestamp()
     });
     setAnnouncement("");
-    alert("📢 聯絡簿已更新！");
-  };
-
-  const handleCheckin = async () => {
-    const reward = 5 + (Object.values(hwChecked).filter(v => v).length * 2);
-    await setDoc(doc(db, `/artifacts/class-5a-app/public/data/student_bank`, selectedStudent.id), { bronze: increment(reward), updatedAt: serverTimestamp() }, { merge: true });
-    alert(`⚓ ${selectedStudent.name} 獲得 ${reward} 銅幣！`);
-    setSelectedStudent(null);
+    alert("📢 聯絡簿同步成功！");
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F9FF] p-6 lg:p-10 font-sans">
-      <header className="flex flex-col items-center mb-12">
-        <div className="flex items-center gap-8 mb-4">
-          <button onClick={handleLogin}><Ship className={`w-16 h-16 ${isTeacher ? 'text-yellow-500' : 'text-sky-600'}`} /></button>
-          <h1 className="text-6xl font-black text-[#0C4A6E] tracking-tighter shadow-sky-100">五年甲班打卡系統</h1>
-          <Anchor className="w-16 h-16 text-sky-600" />
+    <div className="h-screen bg-[#F0F9FF] flex flex-col overflow-hidden font-sans selection:bg-sky-200">
+      {/* 頂部 Header */}
+      <header className="h-24 shrink-0 flex items-center justify-between px-10 bg-white/80 backdrop-blur shadow-sm z-20">
+        <div className="flex items-center gap-6">
+          <button onClick={handleLogin} className="hover:rotate-12 transition-transform">
+            <Ship className={`w-12 h-12 ${isTeacher ? 'text-yellow-500' : 'text-sky-600'}`} />
+          </button>
+          <h1 className="text-4xl font-black text-[#0C4A6E] tracking-tighter">五年甲班打卡系統</h1>
         </div>
-        <div className="bg-white/80 backdrop-blur px-8 py-3 rounded-full shadow-lg border-2 border-sky-100 flex items-center gap-6">
-          <Calendar className="text-sky-600 w-6 h-6" />
-          <span className="text-3xl font-black text-slate-700">{currentTime.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</span>
-          <span className="text-3xl font-mono font-bold text-sky-600 border-l-2 pl-6">{currentTime.toLocaleTimeString()}</span>
+        
+        <div className="flex items-center gap-4 bg-sky-50 px-6 py-2 rounded-2xl border-2 border-sky-100">
+          <Calendar className="text-sky-600 w-5 h-5" />
+          <span className="text-xl font-bold text-slate-700">{currentTime.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })}</span>
+          <span className="text-2xl font-mono font-black text-sky-600 border-l-2 ml-4 pl-4">{currentTime.toLocaleTimeString()}</span>
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <section className="lg:col-span-7 bg-white/60 backdrop-blur-xl rounded-[4rem] p-10 shadow-2xl border-4 border-white">
-          <div className="flex justify-between items-center mb-10">
-            <h2 className="text-4xl font-black text-sky-900 flex items-center gap-4"><Star className="fill-yellow-500 text-yellow-500 w-10 h-10" /> 學生打卡區</h2>
-            {isTeacher && <button onClick={() => setIsTeacher(false)} className="bg-red-500 text-white px-4 py-2 rounded-xl font-bold">登出管理</button>}
+      {/* 主體區域 */}
+      <main ref={splitContainerRef} className="flex-1 flex overflow-hidden p-4 gap-2 relative">
+        
+        {/* 左側：學生區 */}
+        <div style={{ width: `${splitRatio}%` }} className="flex flex-col bg-white rounded-[3rem] shadow-xl border-4 border-white overflow-hidden p-8">
+          <div className="flex justify-between items-end mb-6">
+            <h2 className="text-3xl font-black text-sky-900 flex items-center gap-3"><Star className="fill-yellow-400 text-yellow-400" /> 水手名單</h2>
+            <div className="flex gap-2">
+              <StatBadge label="應到" value={STUDENTS.length} color="bg-slate-100 text-slate-600" />
+              <StatBadge label="請假" value={Object.values(attendance).filter(v => v !== '出席').length} color="bg-red-100 text-red-600" />
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+          
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2">
             {STUDENTS.map(s => (
               <button key={s.id} onClick={() => setSelectedStudent(s)} disabled={attendance[s.id] && attendance[s.id] !== '出席'}
-                className={`relative h-32 rounded-[2.5rem] shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center border-b-8
-                  ${attendance[s.id] && attendance[s.id] !== '出席' ? 'bg-slate-200 border-slate-300 opacity-60' : 'bg-white border-sky-200 hover:translate-y-2 hover:border-b-0'}`}>
-                <span className="absolute top-3 left-6 text-slate-300 font-black text-xl">No.{s.id}</span>
-                <span className="text-4xl font-black text-slate-700">{s.name}</span>
-                {attendance[s.id] && attendance[s.id] !== '出席' && <span className="mt-2 text-red-500 font-black text-lg flex items-center gap-1"><UserX className="w-5 h-5" />{attendance[s.id]}</span>}
+                className={`relative h-28 rounded-3xl shadow-md transition-all flex flex-col items-center justify-center border-b-8 active:border-b-0 active:translate-y-2
+                  ${attendance[s.id] && attendance[s.id] !== '出席' ? 'bg-slate-100 border-slate-200 grayscale' : 'bg-white border-sky-100 hover:bg-sky-50'}`}>
+                <span className="absolute top-2 left-4 text-slate-300 font-black text-lg">No.{s.id}</span>
+                <span className="text-3xl font-black text-slate-700">{s.name}</span>
+                {attendance[s.id] && attendance[s.id] !== '出席' && <span className="text-sm font-bold text-red-500">{attendance[s.id]}</span>}
               </button>
             ))}
           </div>
-        </section>
+        </div>
 
-        <section className="lg:col-span-5 flex flex-col gap-8">
-          <div className="bg-[#0C4A6E] text-white rounded-[4rem] p-10 shadow-2xl relative overflow-hidden">
-            <h2 className="text-4xl font-black mb-8 flex items-center gap-4"><ScrollText className="w-10 h-10" /> 班級聯絡簿</h2>
-            <div className="bg-white/10 p-8 rounded-3xl mb-8 border-2 border-white/20">
-              <p className="text-yellow-400 font-black mb-4 text-xl">📅 檢核日期：{hwDate}</p>
-              <ul className="space-y-4 text-2xl font-bold">
-                {latestHomework.map((item, i) => <li key={i} className="flex items-start gap-3"><div className="w-3 h-3 bg-sky-400 rounded-full mt-3" /> {item}</li>)}
-              </ul>
+        {/* 分屏拖動條 */}
+        <div onMouseDown={handleMouseDown} className="w-2 hover:bg-sky-200 cursor-col-resize rounded-full transition-colors flex items-center justify-center">
+          <div className="w-1 h-12 bg-sky-100 rounded-full" />
+        </div>
+
+        {/* 右側：聯絡簿 */}
+        <div style={{ width: `${100 - splitRatio}%` }} className="flex flex-col bg-[#0C4A6E] rounded-[3rem] shadow-2xl p-8 text-white relative">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-3xl font-black flex items-center gap-3"><ScrollText /> 班級聯絡簿</h2>
+            <div className="flex gap-1 bg-white/10 p-1 rounded-xl">
+              <button onClick={() => setFontSize(f => Math.max(16, f-4))} className="p-2 hover:bg-white/20 rounded-lg"><Minus size={16}/></button>
+              <span className="px-2 py-1 font-mono text-sm">{fontSize}</span>
+              <button onClick={() => setFontSize(f => Math.min(72, f+4))} className="p-2 hover:bg-white/20 rounded-lg"><Plus size={16}/></button>
+              <button onClick={() => setIsVertical(!isVertical)} className="p-2 hover:bg-white/20 rounded-lg ml-2 border-l border-white/20">
+                {isVertical ? <AlignHorizontalJustifyStart size={16}/> : <AlignVerticalJustifyStart size={16}/>}
+              </button>
             </div>
-            {isTeacher && (
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {PRESET_HOMEWORK.map(h => <button key={h} onClick={() => setAnnouncement(prev => prev + h + '\n')} className="bg-sky-700 px-3 py-1 rounded-lg text-sm hover:bg-sky-600 font-bold">+{h}</button>)}
-                  {PRESET_TAGS.map(t => <button key={t} onClick={() => setAnnouncement(prev => prev + t + '\n')} className="bg-yellow-600 px-3 py-1 rounded-lg text-sm hover:bg-yellow-500 font-bold">+{t.replace('：','')}</button>)}
-                </div>
-                <textarea value={announcement} onChange={(e) => setAnnouncement(e.target.value)} placeholder="點擊上方標籤或手動輸入作業..."
-                  className="w-full h-40 bg-white/10 border-2 border-white/30 rounded-3xl p-6 text-2xl focus:outline-none focus:border-white" />
-                <button onClick={handlePostAnnouncement} className="w-full py-5 bg-sky-400 hover:bg-sky-300 text-[#0C4A6E] font-black text-2xl rounded-3xl flex items-center justify-center gap-3"><Send className="w-8 h-8" /> 發布並同步作業</button>
-              </div>
-            )}
           </div>
-        </section>
+
+          <div className={`flex-1 bg-white/10 rounded-3xl p-6 border-2 border-white/10 overflow-hidden relative`}>
+             <div className={`h-full ${isVertical ? '[writing-mode:vertical-rl]' : ''} overflow-x-auto overflow-y-auto`}>
+                <ul className="space-y-4">
+                  {latestHomework.map((item, i) => (
+                    <li key={i} style={{ fontSize: `${fontSize}px` }} className="font-bold flex items-start gap-3 leading-tight">
+                      <span className="text-yellow-400 mt-1">●</span> {item}
+                    </li>
+                  ))}
+                </ul>
+             </div>
+          </div>
+
+          {isTeacher && (
+            <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex flex-wrap gap-2">
+                {PRESET_HOMEWORK.map(h => <button key={h} onClick={() => setAnnouncement(a => a+h+'\n')} className="text-xs bg-sky-800 px-3 py-1 rounded-lg hover:bg-sky-700">+{h}</button>)}
+                {PRESET_TAGS.map(t => <button key={t} onClick={() => setAnnouncement(a => a+t+'\n')} className="text-xs bg-yellow-600 px-3 py-1 rounded-lg hover:bg-yellow-500">+{t}</button>)}
+              </div>
+              <textarea value={announcement} onChange={(e) => setAnnouncement(e.target.value)} className="w-full h-32 bg-white/5 border-2 border-white/20 rounded-2xl p-4 text-xl focus:border-sky-400 focus:outline-none" placeholder="輸入今日作業..." />
+              <button onClick={handlePostAnnouncement} className="w-full py-4 bg-sky-400 text-[#0C4A6E] font-black text-xl rounded-2xl flex items-center justify-center gap-3 hover:bg-sky-300 transition-colors"><Send /> 發布並同步</button>
+            </div>
+          )}
+        </div>
       </main>
 
+      {/* 頁尾版本資訊 */}
+      <footer className="h-8 shrink-0 flex items-center justify-between px-10 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+        <span>Designed by 鄭念慈老師 & Gemini AI</span>
+        <span className="bg-slate-200 px-2 py-0.5 rounded text-slate-500">{APP_VERSION}</span>
+      </footer>
+
+      {/* 學生回報視窗 (彈窗) */}
       {selectedStudent && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-50 p-6">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in">
           <div className="bg-white rounded-[4rem] p-12 w-full max-w-2xl shadow-2xl border-t-[12px] border-sky-500">
-            <h2 className="text-5xl font-black text-sky-900 mb-2 flex items-center gap-4"><Anchor className="w-12 h-12" /> 任務回報</h2>
-            <p className="text-2xl text-slate-500 font-bold mb-10 border-b pb-6">座號 {selectedStudent.id}：{selectedStudent.name}</p>
+            <h2 className="text-5xl font-black text-sky-900 mb-6 flex items-center gap-4"><Anchor className="w-12 h-12" /> 任務回報</h2>
+            <p className="text-2xl text-slate-500 font-bold mb-8 border-b pb-6">{selectedStudent.id} 號：{selectedStudent.name}</p>
             
-            <div className="space-y-5 mb-12">
-              <p className="font-black text-slate-400 text-xl uppercase tracking-widest flex items-center gap-3"><Megaphone className="text-sky-500" /> 昨日任務檢核 ({hwDate})</p>
+            <div className="space-y-4 mb-10">
+              <p className="font-black text-slate-400 flex items-center gap-2"><Megaphone className="text-sky-500" /> 昨日任務檢核 ({hwDate})</p>
               {latestHomework.map((hw, i) => (
-                <label key={i} className="flex items-center gap-6 p-6 bg-slate-50 rounded-3xl cursor-pointer hover:bg-sky-50 border-2 border-transparent hover:border-sky-200">
+                <label key={i} className="flex items-center gap-6 p-5 bg-slate-50 rounded-3xl cursor-pointer hover:bg-sky-100 transition-colors">
                   <input type="checkbox" className="w-10 h-10 rounded-xl text-sky-600 focus:ring-sky-500" onChange={(e) => setHwChecked({...hwChecked, [i]: e.target.checked})} />
                   <span className="text-3xl font-black text-slate-700">{hw}</span>
                 </label>
@@ -163,19 +212,27 @@ const App = () => {
             </div>
 
             {isTeacher && (
-              <div className="bg-red-50 p-6 rounded-[2rem] mb-10 border-2 border-red-100">
-                <p className="text-red-800 font-black mb-4 flex items-center gap-2 text-xl"><Lock className="w-5 h-5" /> 老師專屬：更改出勤狀態</p>
+              <div className="mb-8 p-6 bg-red-50 rounded-3xl border-2 border-red-100">
+                <p className="text-red-800 font-black mb-4">老師專屬：更改狀態</p>
                 <div className="grid grid-cols-3 gap-3">
                   {['出席', '事假', '病假'].map(st => (
-                    <button key={st} onClick={() => updateAttendance(selectedStudent.id, st)} className="py-3 bg-white border-2 border-red-200 rounded-2xl font-black text-red-700 hover:bg-red-500 hover:text-white transition-all">{st}</button>
+                    <button key={st} onClick={async () => {
+                      await setDoc(doc(db, `/artifacts/class-5a-app/public/data/attendance`, selectedStudent.id), { status: st, updatedAt: serverTimestamp() });
+                      setSelectedStudent(null);
+                    }} className="py-3 bg-white rounded-xl font-bold text-red-700 border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all">{st}</button>
                   ))}
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-6">
-              <button onClick={() => setSelectedStudent(null)} className="py-6 bg-slate-100 text-slate-500 rounded-3xl text-2xl font-black hover:bg-slate-200">取消</button>
-              <button onClick={handleCheckin} className="py-6 bg-sky-600 text-white rounded-3xl text-2xl font-black shadow-xl hover:bg-sky-500 flex items-center justify-center gap-3"><CheckCircle2 className="w-8 h-8" /> 完成打卡</button>
+              <button onClick={() => setSelectedStudent(null)} className="py-6 bg-slate-100 text-slate-400 rounded-3xl text-2xl font-black hover:bg-slate-200">取消</button>
+              <button onClick={async () => {
+                const reward = 5 + (Object.values(hwChecked).filter(v => v).length * 2);
+                await setDoc(doc(db, `/artifacts/class-5a-app/public/data/student_bank`, selectedStudent.id), { bronze: increment(reward), updatedAt: serverTimestamp() }, { merge: true });
+                alert(`⚓ 獲得 ${reward} 銅幣！`);
+                setSelectedStudent(null);
+              }} className="py-6 bg-sky-600 text-white rounded-3xl text-2xl font-black shadow-xl hover:bg-sky-500 flex items-center justify-center gap-3"><CheckCircle2 /> 完成打卡</button>
             </div>
           </div>
         </div>
@@ -183,5 +240,13 @@ const App = () => {
     </div>
   );
 };
+
+// 小統計組件
+const StatBadge = ({ label, value, color }) => (
+  <div className={`px-4 py-1 rounded-full ${color} font-black text-sm flex items-center gap-2 border shadow-sm`}>
+    <span>{label}</span>
+    <span className="text-lg">{value}</span>
+  </div>
+);
 
 export default App;
