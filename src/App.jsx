@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { Ship, ScrollText, Check, Edit3, Star, Plus, Minus, AlignVerticalJustifyStart, AlignHorizontalJustifyStart, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 
-const APP_VERSION = "v3.3.260220_FinalStable";
+const APP_VERSION = "v3.4.260220_FinalFix";
 
 const firebaseConfig = {
   apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8",
@@ -43,7 +43,7 @@ const App = () => {
     if (!db) return;
     const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
     
-    // 1. 監聽聯絡簿
+    // 監聽聯絡簿
     const qHw = query(collection(db, "announcements"), where("date", "==", dateKey), limit(1));
     const unsubHw = onSnapshot(qHw, (snapshot) => {
       if (!snapshot.empty) {
@@ -56,7 +56,7 @@ const App = () => {
       }
     });
 
-    // 2. 監聽打卡紀錄
+    // 監聽打卡紀錄
     const unsubAtt = onSnapshot(collection(db, `attendance_${dateKey}`), (snapshot) => {
       const data = {};
       snapshot.forEach(doc => data[doc.id] = doc.data());
@@ -66,19 +66,25 @@ const App = () => {
     return () => { unsubHw(); unsubAtt(); };
   }, [db, viewDate, isEditing]);
 
+  // --- 修正動作：簽到函數 ---
   const handleStudentCheckin = async (student) => {
     if (!db) return;
     const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
     const studentRef = doc(db, `attendance_${dateKey}`, student.id);
-    await setDoc(studentRef, { name: student.name, timestamp: serverTimestamp() });
+    try {
+      await setDoc(studentRef, { name: student.name, timestamp: serverTimestamp() });
+    } catch (e) { console.error("簽到失敗", e); }
   };
 
-  const handleSave = async () => {
+  // --- 修正動作：完成按鈕函數 ---
+  const handleSaveNote = async () => {
     if (!db) return;
     const items = announcementText.split('\n').filter(i => i.trim() !== "");
     const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
-    await setDoc(doc(db, "announcements", dateKey), { items, date: dateKey, updatedAt: serverTimestamp() });
-    setIsEditing(false);
+    try {
+      await setDoc(doc(db, "announcements", dateKey), { items, date: dateKey, updatedAt: serverTimestamp() });
+      setIsEditing(false); // 儲存成功後跳回顯示模式
+    } catch (e) { console.error("儲存失敗", e); }
   };
 
   const handlePresetClick = (text) => setAnnouncementText(prev => prev + (prev ? '\n' : '') + text);
@@ -98,11 +104,11 @@ const App = () => {
           </div>
           <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1)))} className="p-1 hover:bg-white rounded-full"><ChevronRight /></button>
         </div>
-        <div className="text-xs font-bold text-slate-400">最新版本: {APP_VERSION}</div>
+        <div className="text-[10px] font-bold text-slate-400">最新版本: {APP_VERSION}</div>
       </header>
 
       <main className="flex-1 flex p-4 gap-4 overflow-hidden">
-        {/* 左側：學生區 */}
+        {/* 左側：簽到區 */}
         <div className="w-[55%] bg-white rounded-[3rem] shadow-xl p-8 overflow-hidden flex flex-col border-4 border-white">
           <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-sky-900"><Star className="fill-yellow-400 text-yellow-400"/> 航海員簽到</h2>
           
@@ -118,10 +124,9 @@ const App = () => {
             ))}
           </div>
 
-          {/* 圖例說明 */}
           <div className="mt-6 flex gap-6 text-sm font-bold p-4 bg-slate-50 rounded-2xl">
-            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-500 rounded-md shadow-sm"></div>已簽到 (海洋綠)</div>
-            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border border-sky-200 rounded-md shadow-sm"></div>未簽到 (白色)</div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-500 rounded-md"></div>已簽到 (海洋綠)</div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border border-sky-200 rounded-md"></div>未簽到 (白色)</div>
           </div>
         </div>
 
@@ -136,8 +141,10 @@ const App = () => {
                 {isVertical ? <AlignHorizontalJustifyStart size={18}/> : <AlignVerticalJustifyStart size={18}/>}
               </button>
               {isTeacher && (
-                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                  className={`ml-2 px-5 py-2 rounded-xl font-black flex items-center gap-2 transition-all ${isEditing ? 'bg-emerald-500' : 'bg-yellow-400 text-sky-900'}`}>
+                <button 
+                  onClick={() => isEditing ? handleSaveNote() : setIsEditing(true)}
+                  className={`ml-2 px-5 py-2 rounded-xl font-black flex items-center gap-2 transition-all ${isEditing ? 'bg-emerald-500' : 'bg-yellow-400 text-sky-900'}`}
+                >
                   {isEditing ? <><Check size={20}/>完成</> : <><Edit3 size={20}/>編輯</>}
                 </button>
               )}
@@ -147,8 +154,7 @@ const App = () => {
           <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 overflow-hidden relative border-2 border-white/5">
             {isEditing ? (
               <div className="h-full flex flex-col">
-                {/* 編輯模式下的快捷標籤 */}
-                <div className="flex flex-wrap gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {PRESET_HOMEWORK.map(h => <button key={h} onClick={() => handlePresetClick(h)} className="text-xs bg-sky-700 px-3 py-1 rounded-lg hover:bg-sky-600 font-bold border border-sky-500">+{h}</button>)}
                   {PRESET_TAGS.map(t => <button key={t} onClick={() => handlePresetClick(t)} className="text-xs bg-amber-600 px-3 py-1 rounded-lg hover:bg-amber-500 font-bold border border-amber-400">+{t.replace('：','')}</button>)}
                 </div>
