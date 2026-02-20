@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, limit, serverTimestamp } from 'firebase/firestore';
-import { Ship, ScrollText, Check, Edit3, Star, Plus, Minus, AlignVerticalJustifyStart, AlignHorizontalJustifyStart, ChevronLeft, ChevronRight, CheckCircle2, Clock, Palette, Settings, Users, AlertCircle } from 'lucide-react';
+import { Ship, ScrollText, Check, Edit3, Star, Plus, Minus, AlignVerticalJustifyStart, AlignHorizontalJustifyStart, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+
+const APP_VERSION = "v3.3.260220_FinalStable";
 
 const firebaseConfig = {
   apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8",
@@ -12,49 +14,49 @@ const firebaseConfig = {
   appId: "1:828328241350:web:5d39d529209f87a2540fc7"
 };
 
-const APP_VERSION = "v3.1.260220_FinalStable";
+const STUDENTS = [
+  { id: '1', name: '陳○佑' }, { id: '2', name: '徐○綸' }, { id: '3', name: '蕭○群' }, 
+  { id: '4', name: '吳○晏' }, { id: '5', name: '呂○蔚' }, { id: '6', name: '吳○昇' },
+  { id: '7', name: '翁○儀' }, { id: '8', name: '鄭○妍' }, { id: '9', name: '周○涵' }, { id: '10', name: '李○妤' }
+];
+
+const PRESET_HOMEWORK = ["預習數課", "數習", "數八", "背成+小+寫"];
+const PRESET_TAGS = ["帶學用品：", "訂正作業："];
 
 const App = () => {
   const [db, setDb] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
   const [isTeacher, setIsTeacher] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
   const [displayItems, setDisplayItems] = useState([]);
   const [attendance, setAttendance] = useState({});
-  const [fontSize, setFontSize] = useState(42);
+  const [fontSize, setFontSize] = useState(48);
   const [isVertical, setIsVertical] = useState(false);
-  const [clockStyle, setClockStyle] = useState(0);
-
-  const STUDENTS = useMemo(() => [
-    { id: '1', name: '陳○佑' }, { id: '2', name: '徐○綸' }, { id: '3', name: '蕭○群' }, 
-    { id: '4', name: '吳○晏' }, { id: '5', name: '呂○蔚' }, { id: '6', name: '吳○昇' },
-    { id: '7', name: '翁○儀' }, { id: '8', name: '鄭○妍' }, { id: '9', name: '周○涵' }, { id: '10', name: '李○妤' }
-  ], []);
 
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
     setDb(getFirestore(app));
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (!db) return;
     const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
     
-    const unsubHw = onSnapshot(query(collection(db, "announcements"), where("date", "==", dateKey), limit(1)), (snapshot) => {
+    // 1. 監聽聯絡簿
+    const qHw = query(collection(db, "announcements"), where("date", "==", dateKey), limit(1));
+    const unsubHw = onSnapshot(qHw, (snapshot) => {
       if (!snapshot.empty) {
         const items = snapshot.docs[0].data().items || [];
         setDisplayItems(items);
-        setAnnouncementText(items.join('\n'));
+        if (!isEditing) setAnnouncementText(items.join('\n'));
       } else {
         setDisplayItems(["本日尚未發布作業"]);
-        setAnnouncementText("");
+        if (!isEditing) setAnnouncementText("");
       }
     });
 
+    // 2. 監聽打卡紀錄
     const unsubAtt = onSnapshot(collection(db, `attendance_${dateKey}`), (snapshot) => {
       const data = {};
       snapshot.forEach(doc => data[doc.id] = doc.data());
@@ -62,7 +64,14 @@ const App = () => {
     });
 
     return () => { unsubHw(); unsubAtt(); };
-  }, [db, viewDate]);
+  }, [db, viewDate, isEditing]);
+
+  const handleStudentCheckin = async (student) => {
+    if (!db) return;
+    const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
+    const studentRef = doc(db, `attendance_${dateKey}`, student.id);
+    await setDoc(studentRef, { name: student.name, timestamp: serverTimestamp() });
+  };
 
   const handleSave = async () => {
     if (!db) return;
@@ -72,62 +81,91 @@ const App = () => {
     setIsEditing(false);
   };
 
+  const handlePresetClick = (text) => setAnnouncementText(prev => prev + (prev ? '\n' : '') + text);
+
   return (
     <div className="h-screen bg-[#F0F9FF] flex flex-col overflow-hidden font-sans">
       <header className="h-20 shrink-0 flex items-center justify-between px-10 bg-white shadow-sm z-20 border-b-4 border-sky-100">
         <div className="flex items-center gap-4">
           <button onClick={() => {if(prompt("密碼")==="123+++") setIsTeacher(true)}}><Ship className="w-10 h-10 text-sky-600" /></button>
-          <h1 className="text-3xl font-black text-sky-900">五甲航海日誌</h1>
+          <h1 className="text-3xl font-black text-sky-900 tracking-tighter">五年甲班打卡系統</h1>
         </div>
+        
         <div className="flex items-center gap-4 bg-sky-50 p-2 rounded-2xl border-2 border-sky-100">
           <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1)))} className="p-1 hover:bg-white rounded-full"><ChevronLeft /></button>
-          <span className="text-2xl font-black text-sky-800 px-4">{viewDate.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
+          <div className="text-center min-w-[140px]">
+            <span className="text-xl font-black text-sky-800">{viewDate.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
+          </div>
           <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1)))} className="p-1 hover:bg-white rounded-full"><ChevronRight /></button>
         </div>
-        <div className="text-2xl font-mono font-black text-sky-600">{currentTime.toLocaleTimeString()}</div>
+        <div className="text-xs font-bold text-slate-400">最新版本: {APP_VERSION}</div>
       </header>
 
       <main className="flex-1 flex p-4 gap-4 overflow-hidden">
-        <div className="w-[55%] bg-white rounded-[3rem] shadow-xl p-8 overflow-y-auto border-4 border-white">
-          <h2 className="text-2xl font-black mb-8 flex items-center gap-2 text-sky-900"><Star className="fill-yellow-400 text-yellow-400"/> 航海員簽到表</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* 左側：學生區 */}
+        <div className="w-[55%] bg-white rounded-[3rem] shadow-xl p-8 overflow-hidden flex flex-col border-4 border-white">
+          <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-sky-900"><Star className="fill-yellow-400 text-yellow-400"/> 航海員簽到</h2>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 flex-1 overflow-y-auto pr-2">
             {STUDENTS.map(s => (
-              <button key={s.id} onClick={async () => {
-                const dateKey = viewDate.toLocaleDateString('zh-TW').replace(/\//g, "-");
-                await setDoc(doc(db, `attendance_${dateKey}`, s.id), { name: s.name, timestamp: serverTimestamp() });
-              }} className={`h-24 rounded-3xl border-b-8 transition-all flex flex-col items-center justify-center relative active:border-b-0 active:translate-y-2 ${attendance[s.id] ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-sky-100 text-slate-700'}`}>
-                {attendance[s.id] && <CheckCircle2 className="absolute top-2 right-2 text-green-500" size={20}/>}
-                <span className="text-xs font-bold opacity-30">No.{s.id}</span>
-                <span className="text-3xl font-black">{s.name}</span>
+              <button key={s.id} onClick={() => handleStudentCheckin(s)}
+                className={`h-28 rounded-3xl border-b-8 transition-all flex flex-col items-center justify-center relative active:border-b-0 active:translate-y-2
+                  ${attendance[s.id] ? 'bg-emerald-500 border-emerald-700 text-white shadow-inner' : 'bg-white border-sky-100 text-slate-700 hover:bg-sky-50'}`}>
+                {attendance[s.id] && <CheckCircle2 className="absolute top-2 right-4 text-white" size={24} />}
+                <span className={`text-xs font-bold ${attendance[s.id] ? 'text-emerald-100' : 'opacity-30'}`}>No.{s.id}</span>
+                <span className="text-4xl font-black">{s.name}</span>
               </button>
             ))}
           </div>
+
+          {/* 圖例說明 */}
+          <div className="mt-6 flex gap-6 text-sm font-bold p-4 bg-slate-50 rounded-2xl">
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-500 rounded-md shadow-sm"></div>已簽到 (海洋綠)</div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border border-sky-200 rounded-md shadow-sm"></div>未簽到 (白色)</div>
+          </div>
         </div>
 
-        <div className="w-[45%] bg-[#0C4A6E] rounded-[3rem] p-8 text-white shadow-2xl flex flex-col relative overflow-hidden">
+        {/* 右側：聯絡簿 (原地編輯設計) */}
+        <div className="w-[45%] bg-[#0C4A6E] rounded-[3rem] p-10 text-white shadow-2xl flex flex-col relative">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-black flex items-center gap-2"><ScrollText /> 聯絡簿內容</h2>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setFontSize(f => f-4)} className="p-1.5 bg-white/10 rounded-lg"><Minus size={14}/></button>
-              <button onClick={() => setFontSize(f => f+4)} className="p-1.5 bg-white/10 rounded-lg"><Plus size={14}/></button>
-              <button onClick={() => setIsVertical(!isVertical)} className="p-1.5 bg-white/10 rounded-lg border-l border-white/20 ml-1">
+            <h2 className="text-3xl font-black flex items-center gap-3"><ScrollText /> 班級聯絡簿</h2>
+            <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl">
+              <button onClick={() => setFontSize(f => Math.max(16, f-4))} className="p-1.5 hover:bg-white/20 rounded-lg"><Minus size={16}/></button>
+              <button onClick={() => setFontSize(f => Math.min(80, f+4))} className="p-1.5 hover:bg-white/20 rounded-lg"><Plus size={16}/></button>
+              <button onClick={() => setIsVertical(!isVertical)} className="p-1.5 hover:bg-white/20 rounded-lg border-l border-white/20 ml-1">
                 {isVertical ? <AlignHorizontalJustifyStart size={18}/> : <AlignVerticalJustifyStart size={18}/>}
               </button>
               {isTeacher && (
-                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className={`ml-2 px-4 py-1.5 rounded-xl font-bold flex items-center gap-2 ${isEditing ? 'bg-green-500' : 'bg-yellow-400 text-sky-900'}`}>
-                  {isEditing ? <Check size={18}/> : <Edit3 size={18}/>} {isEditing ? "完成" : "編輯"}
+                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                  className={`ml-2 px-5 py-2 rounded-xl font-black flex items-center gap-2 transition-all ${isEditing ? 'bg-emerald-500' : 'bg-yellow-400 text-sky-900'}`}>
+                  {isEditing ? <><Check size={20}/>完成</> : <><Edit3 size={20}/>編輯</>}
                 </button>
               )}
             </div>
           </div>
-          <div className="flex-1 bg-black/20 rounded-2xl p-6 overflow-auto">
+
+          <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 overflow-hidden relative border-2 border-white/5">
             {isEditing ? (
-              <textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} className={`w-full h-full bg-transparent outline-none resize-none font-bold ${isVertical ? '[writing-mode:vertical-rl]' : ''}`} style={{ fontSize: `${fontSize}px` }} autoFocus />
+              <div className="h-full flex flex-col">
+                {/* 編輯模式下的快捷標籤 */}
+                <div className="flex flex-wrap gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+                  {PRESET_HOMEWORK.map(h => <button key={h} onClick={() => handlePresetClick(h)} className="text-xs bg-sky-700 px-3 py-1 rounded-lg hover:bg-sky-600 font-bold border border-sky-500">+{h}</button>)}
+                  {PRESET_TAGS.map(t => <button key={t} onClick={() => handlePresetClick(t)} className="text-xs bg-amber-600 px-3 py-1 rounded-lg hover:bg-amber-500 font-bold border border-amber-400">+{t.replace('：','')}</button>)}
+                </div>
+                <textarea 
+                  value={announcementText} 
+                  onChange={(e) => setAnnouncementText(e.target.value)}
+                  autoFocus
+                  className={`flex-1 bg-transparent outline-none resize-none font-bold ${isVertical ? '[writing-mode:vertical-rl] h-full' : ''}`}
+                  style={{ fontSize: `${fontSize}px`, lineHeight: 1.5 }}
+                />
+              </div>
             ) : (
-              <div className={isVertical ? '[writing-mode:vertical-rl] h-full' : ''}>
+              <div className={`h-full overflow-auto ${isVertical ? '[writing-mode:vertical-rl] h-full' : ''}`}>
                 {displayItems.map((item, i) => (
-                  <div key={i} style={{ fontSize: `${fontSize}px` }} className="font-bold mb-4 flex gap-2">
-                    <span className="text-yellow-400">{i + 1}.</span>{item}
+                  <div key={i} style={{ fontSize: `${fontSize}px` }} className="font-bold mb-6 leading-tight flex items-start gap-4">
+                    <span className="text-yellow-400 shrink-0 select-none">{i + 1}.</span>
+                    <span>{item}</span>
                   </div>
                 ))}
               </div>
@@ -135,10 +173,6 @@ const App = () => {
           </div>
         </div>
       </main>
-      <footer className="h-8 flex justify-between px-10 items-center text-[10px] text-slate-400 font-bold bg-white border-t">
-        <span>Designed by 鄭念慈老師 & Gemini AI</span>
-        <span>{APP_VERSION}</span>
-      </footer>
     </div>
   );
 };
