@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
-import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle } from 'lucide-react';
+import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History } from 'lucide-react';
 
-const APP_VERSION = "V15.0.260222_Ocean_Alignment";
+const APP_VERSION = "V16.0.260222_Perfect_Vision";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -77,7 +77,7 @@ const App = () => {
     fetchPrev();
   }, [db, viewDate, isEditing]);
 
-  // --- 核心判定引擎 (完美對接老師手動修改) ---
+  // --- 核心判定引擎 ---
   const getAutoAttStatus = (id, time) => {
     if (!time) return 'absent';
     const [h, m, s] = time.split(':').map(Number);
@@ -88,7 +88,7 @@ const App = () => {
 
   const getFinalAttStatus = (id, attData) => {
     if (!attData) return 'absent';
-    if (attData.manualAtt) return attData.manualAtt; // 最高優先級：老師修改
+    if (attData.manualAtt) return attData.manualAtt;
     if (attData.status === 'sick') return 'sick';
     if (attData.status === 'personal') return 'personal';
     return getAutoAttStatus(id, attData.checkinTime);
@@ -104,14 +104,14 @@ const App = () => {
 
   const getFinalTaskStatus = (id, originalTaskName, attData) => {
     const cleanName = originalTaskName.trim();
-    if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName]; // 最高優先級：老師修改
+    if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
     const hw = attData?.completedTasks || {};
     if (!hw[originalTaskName] && !hw[cleanName]) return 'missing';
     if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
     return 'done';
   };
 
-  // 背景靜默計算每月報表
+  // 背景靜默計算每月報表 (包含彈窗歷史紀錄)
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -119,7 +119,11 @@ const App = () => {
       const monthStr = activeStatMonth.replace('月', '').padStart(2, '0');
       const targetDates = recordedDates.filter(d => d.split('-')[1] === monthStr);
       const stats = {};
-      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] });
+      STUDENTS.forEach(s => stats[s.id] = { 
+        onTime: 0, late: 0, sick: 0, personal: 0, 
+        fullDoneDays: 0, lateDays: 0, missingDays: 0, 
+        issues: [], dailyRecords: {} 
+      });
 
       for (const dKey of targetDates) {
         const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
@@ -136,6 +140,15 @@ const App = () => {
           else if (finalAtt === 'late') stats[sid].late++;
           else if (finalAtt === 'sick') stats[sid].sick++;
           else if (finalAtt === 'personal') stats[sid].personal++;
+
+          // 紀錄每日歷程
+          stats[sid].dailyRecords[dKey] = {
+            att: finalAtt,
+            time: d.checkinTime,
+            missingList: [],
+            lateList: [],
+            allDone: false
+          };
           
           if (dailyTasks.length > 0) {
             let missingCount = 0;
@@ -147,15 +160,22 @@ const App = () => {
               if (finalTask === 'missing') {
                 missingCount++;
                 stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (缺交)`);
+                stats[sid].dailyRecords[dKey].missingList.push(cleanTask);
               } else if (finalTask === 'late') {
                 lateCount++;
                 stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (遲交)`);
+                stats[sid].dailyRecords[dKey].lateList.push(cleanTask);
               }
             });
 
             if (missingCount > 0) stats[sid].missingDays++;
             else if (lateCount > 0) stats[sid].lateDays++;
-            else stats[sid].fullDoneDays++;
+            else {
+              stats[sid].fullDoneDays++;
+              stats[sid].dailyRecords[dKey].allDone = true;
+            }
+          } else {
+            stats[sid].dailyRecords[dKey].allDone = true; // 沒任務算齊全
           }
         });
       }
@@ -180,10 +200,15 @@ const App = () => {
     const dateKey = formatDate(viewDate);
     const cleanT = taskName.trim();
     const d = attendance[studentId] || {};
-    const current = (d.manualTasks && d.manualTasks[cleanT]) || 'auto';
+    
+    // 防錯機制：避開 Firebase dot notation 不能有特殊字元的限制
+    const currentManualTasks = d.manualTasks || {};
+    const currentStatus = currentManualTasks[cleanT] || 'auto';
     const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
-    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { [`manualTasks.${cleanT}`]: next === 'auto' ? null : next }, { merge: true });
+    const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
+    
+    const updatedTasks = { ...currentManualTasks, [cleanT]: nextStatus === 'auto' ? null : nextStatus };
+    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
   };
 
   const getStatusDisplay = (status, type) => {
@@ -279,14 +304,15 @@ const App = () => {
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden p-4 h-[calc(100vh-250px)] print:hidden relative">
-        {/* 1. 簽到區 - CSS Grid 等高鎖定 */}
-        <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 h-full overflow-hidden shrink-0">
+      {/* 主視窗：解除高度鎖定，不再產生內部捲動軸 */}
+      <main className="flex flex-col lg:flex-row p-4 gap-2 min-h-[600px] print:hidden">
+        {/* 1. 簽到區 */}
+        <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-4 text-sky-800 flex items-center gap-3 px-2 shrink-0"><UserCheck size={40}/> 航海員簽到</h2>
-          <div className="grid grid-cols-2 grid-rows-5 gap-3 h-full pb-2">
+          <div className="grid grid-cols-2 gap-4 auto-rows-fr">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
-              const attStat = getFinalAttStatus(s.id, d); // 精準讀取最終狀態
+              const attStat = getFinalAttStatus(s.id, d);
               let color = 'bg-slate-50 text-slate-300 border-slate-100';
               let textStatus = '未簽到';
               
@@ -299,15 +325,15 @@ const App = () => {
                 color = 'bg-pink-100 text-pink-600 border-pink-200 shadow-sm';
                 textStatus = d?.checkinTime || '遲到';
               } else if (attStat === 'sick') {
-                color = 'bg-purple-100 text-purple-700 border-purple-200 shadow-inner';
+                color = 'bg-purple-50 text-purple-700 border-purple-100 shadow-sm'; // 柔和紫色
                 textStatus = '病假';
               } else if (attStat === 'personal') {
-                color = 'bg-orange-100 text-orange-700 border-orange-200 shadow-inner';
+                color = 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm'; // 柔和橘色
                 textStatus = '事假';
               }
               
               return (
-                <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`w-full h-full rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
+                <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`h-24 rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
                   <span className="text-5xl font-black">{maskName(s.name)}</span>
                   {d?.checkinTime && <span className={`text-2xl font-black mt-1 ${attStat === 'late' ? 'text-pink-700' : (attStat === 'on-time' ? 'text-emerald-500' : '')}`}>{textStatus}</span>}
                 </button>
@@ -316,7 +342,7 @@ const App = () => {
           </div>
         </div>
 
-        <div className="w-4 mx-1 cursor-col-resize flex items-center justify-center hover:bg-sky-200 rounded-full transition-colors z-50 group shrink-0"
+        <div className="w-4 mx-1 cursor-col-resize flex items-center justify-center hover:bg-sky-200 rounded-full transition-colors group shrink-0"
           onMouseDown={(e) => {
             const startX = e.clientX; const startW = w1;
             const move = (ev) => setW1(Math.max(15, Math.min(startW + ((ev.clientX - startX) / window.innerWidth) * 100, 40)));
@@ -324,10 +350,10 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 2. 進度區 - CSS Grid 等高鎖定 */}
-        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 h-full overflow-hidden shrink-0">
+        {/* 2. 進度區 */}
+        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-4 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
-          <div className="grid grid-cols-1 grid-rows-10 gap-2 h-full pb-2">
+          <div className="grid grid-cols-1 gap-3 auto-rows-fr">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const hw = d?.completedTasks || {};
@@ -335,17 +361,17 @@ const App = () => {
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               return (
-                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`w-full h-full flex items-center px-4 rounded-[1.5rem] border transition-all cursor-pointer ${isFull ? 'bg-emerald-50 border-emerald-200' : 'bg-sky-50/30 border-sky-100 hover:bg-sky-100'}`}>
-                  <span className="text-3xl font-black text-sky-900 w-32 truncate">{maskName(s.name)}</span>
-                  <div className="flex-1 h-4 bg-slate-100 rounded-full mx-4 overflow-hidden shadow-inner"><div className="h-full bg-sky-500 transition-all duration-700" style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
-                  <span className="text-3xl font-black text-sky-600 w-24 text-right">{comp}/{total}</span>
+                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-11 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-emerald-50 border-emerald-200' : 'bg-sky-50/30 border-sky-100 hover:bg-sky-100'}`}>
+                  <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
+                  <div className="flex-1 h-3 bg-slate-100 rounded-full mx-4 overflow-hidden shadow-inner"><div className="h-full bg-sky-500 transition-all duration-700" style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
+                  <span className="text-3xl font-black text-sky-600 w-20 text-right">{comp}/{total}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="w-4 mx-1 cursor-col-resize flex items-center justify-center hover:bg-sky-200 rounded-full transition-colors z-50 group shrink-0"
+        <div className="w-4 mx-1 cursor-col-resize flex items-center justify-center hover:bg-sky-200 rounded-full transition-colors group shrink-0"
           onMouseDown={(e) => {
             const startX = e.clientX; const startW = w2;
             const move = (ev) => setW2(Math.max(15, Math.min(startW + ((ev.clientX - startX) / window.innerWidth) * 100, 40)));
@@ -353,8 +379,8 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 3. 任務區 - 自動延伸填滿右側 */}
-        <div className="flex-1 bg-[#0C4A6E] rounded-[3rem] shadow-xl p-8 text-white flex flex-col h-full overflow-hidden shrink-0 min-w-0">
+        {/* 3. 任務區 */}
+        <div className="flex-1 bg-[#0C4A6E] rounded-[3rem] shadow-xl p-8 text-white flex flex-col shrink-0 min-w-0">
           <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4 shrink-0">
             <h2 className="text-4xl font-black flex items-center gap-4 text-sky-200 drop-shadow-md"><ScrollText size={48}/> 任務發布區</h2>
             <div className="flex items-center gap-4">
@@ -371,11 +397,11 @@ const App = () => {
             </div>
           </div>
           {isEditing && (
-            <div className="flex flex-wrap gap-2 mb-4 animate-fade-in max-h-[120px] overflow-y-auto pr-2 custom-scrollbar shrink-0">
+            <div className="flex flex-wrap gap-2 mb-4 animate-fade-in pr-2 shrink-0">
               {QUICK_TAGS.map(t => <button key={t} onClick={() => setAnnouncementText(p => p ? p + '\n' + t : t)} className="px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-xl font-bold hover:bg-white/30 transition-all">{t}</button>)}
             </div>
           )}
-          <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 overflow-y-auto custom-scrollbar border border-white/5 shadow-inner">
+          <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 shadow-inner">
             {isEditing ? (
               <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} 
                 style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
@@ -385,7 +411,7 @@ const App = () => {
                 {displayItems.map((item, i) => (
                   <div key={i} className="flex items-start gap-8 border-b border-white/5 pb-2 mb-2 last:border-0 last:mb-0 transition-all">
                     <span className="flex-shrink-0 w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg border-4 border-orange-200/50 font-sans font-black">{i+1}</span>
-                    <span className="text-white drop-shadow-sm pt-1">{item}</span>
+                    <span className="text-white drop-shadow-sm pt-1 tracking-wide">{item}</span>
                   </div>
                 ))}
               </div>
@@ -394,7 +420,7 @@ const App = () => {
         </div>
       </main>
 
-      {/* 每月分析報表 - 海洋漸層表頭、直接並列天數 */}
+      {/* 每月分析報表 */}
       <section className="mx-4 mb-8 bg-white rounded-[3rem] p-6 shadow-2xl border-4 border-sky-100 flex flex-col shrink-0 min-h-[300px] print:hidden">
         <div className="flex justify-between items-center mb-4 px-2">
           <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> {activeStatMonth} 分析報表</h3>
@@ -402,35 +428,35 @@ const App = () => {
             <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-sky-50 border-2 border-sky-200 text-sky-700 rounded-2xl px-6 py-2 font-black text-2xl outline-none shadow-sm cursor-pointer hover:bg-sky-100 transition-colors">
               {["2月", "3月", "4月", "5月", "6月", "7月"].map(m => <option key={m} value={m}>{m} 統計</option>)}
             </select>
-            {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
+            {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-violet-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-violet-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
         </div>
         <div className="flex-1 overflow-auto rounded-[2rem] border-2 border-sky-50 relative custom-scrollbar">
           <table className="w-full text-center table-fixed border-collapse">
-            <thead className="sticky top-0 z-40 bg-sky-700 text-white shadow-md">
+            <thead className="sticky top-0 z-40 text-white shadow-md">
               <tr className="text-2xl font-black">
-                <th className="p-4 bg-sky-800 border-r border-sky-600 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
-                <th className="p-4 bg-cyan-700 border-r border-sky-500 w-[35%]">出席狀況</th>
-                <th className="p-4 bg-sky-700">任務繳交 (天數)</th>
+                <th className="p-4 bg-sky-950 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
+                <th className="p-4 bg-cyan-700 border-r border-cyan-600 w-[35%]">出席狀況</th>
+                <th className="p-4 bg-blue-600">任務繳交 (天數)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sky-100">
               {STUDENTS.map(s => {
                 const sData = monthlyStats[s.id];
                 return (
-                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors">
-                    <td className="p-4 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10">{maskName(s.name)}</td>
+                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer" onClick={() => setViewOnlyStudent({ student: s, fullHistory: sData })}>
+                    <td className="p-4 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 hover:text-sky-600">{maskName(s.name)}</td>
                     <td className="p-4 border-r-2 border-sky-50">
                       <div className="flex justify-center items-center gap-6 text-2xl font-black">
                         <div className="flex items-center gap-2 text-emerald-600"><CheckCircle2 size={28}/> 準時: {sData ? sData.onTime : '--'}</div>
                         <div className="flex items-center gap-2 text-pink-500"><Clock size={28}/> 遲到: {sData ? sData.late : '--'}</div>
-                        <div className="flex items-center gap-2 text-slate-400"><UserMinus size={28}/> 假別: {sData ? (sData.sick + sData.personal) : '--'}</div>
+                        <div className="flex items-center gap-2 text-slate-400"><UserMinus size={28}/> 未到: {sData ? (sData.sick + sData.personal) : '--'}</div>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex justify-center items-center gap-10 text-2xl font-black">
                         <div className="flex items-center gap-2 text-sky-600"><Trophy size={32} className="text-sky-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div>
-                        <div className="flex items-center gap-2 text-amber-500"><Clock size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div>
+                        <div className="flex items-center gap-2 text-amber-500"><History size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div>
                         <div className="flex items-center gap-2 text-rose-500"><AlertTriangle size={32}/> 缺交: {sData ? sData.missingDays : '--'}</div>
                       </div>
                     </td>
@@ -442,20 +468,40 @@ const App = () => {
         </div>
       </section>
 
-      {/* 任務確認與教師修改視窗 - 三欄設計 */}
+      {/* 彈窗系統 (打卡修改 / 個人歷程) */}
       {(activeStudent || viewOnlyStudent) && (
         <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
           <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
             <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
               <h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">
                 {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
-                <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">任務確認 - {formatDate(viewDate)}</span>
+                <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">
+                  {viewOnlyStudent?.fullHistory ? `📅 ${activeStatMonth} 學習歷程` : `任務確認 - ${formatDate(viewDate)}`}
+                </span>
               </h3>
               <button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button>
             </div>
             
             <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
-              {viewOnlyStudent && user ? (
+              {/* 月份歷程檢視 */}
+              {viewOnlyStudent?.fullHistory ? (
+                <div className="space-y-4">
+                  {Object.entries(viewOnlyStudent.fullHistory.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (
+                    <div key={date} className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-4">
+                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-2">
+                        <span className="text-3xl font-black text-sky-800">{date}</span>
+                        {getStatusDisplay(rec.att, 'att')}
+                      </div>
+                      <div className="flex gap-3 flex-wrap">
+                        {rec.allDone && <span className="text-2xl font-black text-sky-600">✓ 任務齊全</span>}
+                        {rec.missingList.map(m => <span key={`m-${m}`} className="px-4 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xl font-bold">{m} (缺交)</span>)}
+                        {rec.lateList.map(l => <span key={`l-${l}`} className="px-4 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl text-xl font-bold">{l} (遲交)</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : viewOnlyStudent && user ? (
+                /* 教師手動修改模式 */
                 <div className="flex flex-col gap-6">
                   <div className="bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-200 flex items-center gap-6">
                     <span className="text-4xl font-black text-slate-700">出席狀態：</span>
@@ -485,6 +531,7 @@ const App = () => {
                   </div>
                 </div>
               ) : (
+                /* 學生打卡模式 */
                 <div className="grid grid-cols-3 gap-6">
                   {activeStudent ? prevTasks.map((t, idx) => {
                     const cleanT = t.trim();
@@ -518,6 +565,7 @@ const App = () => {
               )}
             </div>
 
+            {/* 打卡按鈕 */}
             {activeStudent && (
               <div className="grid grid-cols-3 gap-6 shrink-0 h-28 mt-8 border-t-4 border-slate-50 pt-8">
                 <button onClick={() => submitCheckin('present')} className="bg-sky-500 text-white rounded-[2rem] text-4xl font-black shadow-xl hover:bg-sky-600 transition-all active:scale-95">確認打卡</button>
@@ -529,7 +577,7 @@ const App = () => {
         </div>
       )}
 
-      {/* 列印報表區域 (兩列斷句、移除五年甲班字樣) */}
+      {/* 列印報表區域 */}
       <div className="hidden print:block p-8 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
         <div className="grid grid-cols-2 gap-8">
