@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History } from 'lucide-react';
 
-const APP_VERSION = "V17.0.260223_Live_Sync_Edition";
+const APP_VERSION = "V18.0.260223_Ocean_Sync";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -108,7 +108,7 @@ const App = () => {
     return 'done';
   };
 
-  // 背景靜默計算每月報表 (即時更新)
+  // 背景靜默計算每月報表 (即時更新優化版 V18)
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -119,17 +119,23 @@ const App = () => {
       STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
 
       for (const dKey of targetDates) {
-        const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
-        const attMap = {};
-        attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
-        
-        const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "==", dKey)));
-        const dailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
         const isCurrentView = dKey === formatDate(viewDate);
+        let attMap = {};
+        let dailyTasks = [];
+
+        if (isCurrentView) {
+          attMap = attendance;
+          dailyTasks = displayItems;
+        } else {
+          const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
+          attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
+          const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "==", dKey)));
+          dailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
+        }
 
         STUDENTS.forEach(student => {
           const sid = student.id;
-          const d = (isCurrentView && attendance[sid]) ? attendance[sid] : attMap[sid];
+          const d = attMap[sid];
 
           if (!d) {
             stats[sid].dailyRecords[dKey] = { att: 'absent', missingList: [], lateList: [], allDone: false };
@@ -186,7 +192,7 @@ const App = () => {
     };
     fetchMonth();
     return () => { isMounted = false; };
-  }, [db, activeStatMonth, recordedDates, attendance, viewDate]);
+  }, [db, activeStatMonth, recordedDates, attendance, viewDate, displayItems]);
 
   const cycleManualAtt = async (studentId) => {
     if (!user) return;
@@ -219,7 +225,6 @@ const App = () => {
     await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
   };
 
-  // 狀態顯示 (字體大幅放大)
   const getStatusDisplay = (status, type) => {
     if (type === 'att') {
       switch(status) {
@@ -231,7 +236,7 @@ const App = () => {
       }
     } else {
       switch(status) {
-        case 'done': return <span className="bg-cyan-100 text-cyan-800 px-4 py-2 rounded-xl border border-cyan-300 font-bold">齊全</span>;
+        case 'done': return <span className="bg-sky-100 text-sky-800 px-4 py-2 rounded-xl border border-sky-300 font-bold">齊全</span>;
         case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border border-amber-300 font-bold">遲交</span>;
         case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border border-rose-300 font-bold">缺交</span>;
         case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border border-slate-400 font-bold">免交</span>;
@@ -267,7 +272,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-none overflow-x-hidden">
-      {/* Header */}
       <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
         <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
           <div className="flex items-center gap-6">
@@ -313,9 +317,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* 主視窗：解除鎖死高度，不再有內部捲動軸 */}
       <main className="flex flex-col lg:flex-row p-4 gap-2 print:hidden items-stretch pb-12">
-        {/* 1. 簽到區 */}
         <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><UserCheck size={40}/> 航海員簽到</h2>
           <div className="grid grid-cols-2 gap-4 flex-1">
@@ -359,21 +361,23 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 2. 進度區 (海洋風格：湖水綠 Cyan-500) */}
-        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
-          <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
+        {/* 2. 進度區 (V18: 淺色清澈海洋藍 Sky-Ocean Style) */}
+        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-100 shrink-0">
+          <h2 className="text-3xl font-black mb-6 text-sky-700 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
           <div className="flex flex-col gap-4 flex-1 justify-between">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const hw = d?.completedTasks || {};
-              const comp = prevTasks.filter(t => getFinalTaskStatus(s.id, t.trim(), d) === 'done' || getFinalTaskStatus(s.id, t.trim(), d) === 'late').length;
-              const total = prevTasks.length;
+              const comp = displayItems.filter(t => getFinalTaskStatus(s.id, t.trim(), d) === 'done' || getFinalTaskStatus(s.id, t.trim(), d) === 'late').length;
+              const total = displayItems.length;
               const isFull = comp === total && total > 0;
               return (
-                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-teal-50 border-teal-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
+                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border-2 transition-all cursor-pointer ${isFull ? 'bg-sky-50 border-sky-400' : 'bg-white border-sky-50 hover:border-sky-200 hover:bg-sky-50/30'}`}>
                   <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
-                  <div className="flex-1 h-4 bg-teal-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-teal-500' : 'bg-sky-500'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
-                  <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-teal-700' : 'text-sky-600'}`}>{comp}/{total}</span>
+                  <div className="flex-1 h-5 bg-sky-100/50 rounded-full mx-4 overflow-hidden shadow-inner border border-sky-100/30">
+                    <div className={`h-full transition-all duration-700 rounded-full ${isFull ? 'bg-gradient-to-r from-sky-400 to-blue-500' : 'bg-sky-400'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div>
+                  </div>
+                  <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-blue-600' : 'text-sky-500'}`}>{comp}/{total}</span>
                 </div>
               );
             })}
@@ -388,7 +392,6 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 3. 任務區 (數字改為黃色系列) */}
         <div className="flex-1 bg-[#0C4A6E] rounded-[3rem] shadow-xl p-8 text-white flex flex-col shrink-0 min-w-0">
           <div className="flex justify-between items-center mb-6 border-b border-white/20 pb-4 shrink-0">
             <h2 className="text-4xl font-black flex items-center gap-4 text-sky-200 drop-shadow-md"><ScrollText size={48}/> 任務發布區</h2>
@@ -429,7 +432,6 @@ const App = () => {
         </div>
       </main>
 
-      {/* 每月分析報表 */}
       <section className="mx-4 mb-12 bg-white rounded-[3rem] p-8 shadow-2xl border-4 border-sky-100 flex flex-col print:hidden">
         <div className="flex justify-between items-center mb-6 px-2">
           <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> {activeStatMonth} 分析報表</h3>
@@ -477,9 +479,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* 彈窗系統 (資料綁定 monthlyStats 實現 Live Sync) */}
       {(activeStudent || viewOnlyStudent) && (() => {
-        // 從活水數據池抓取最新資料
         const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
         const liveMonthData = monthlyStats[targetId];
 
@@ -524,7 +524,7 @@ const App = () => {
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4">
-                    {prevTasks.map((t, idx) => {
+                    {displayItems.map((t, idx) => {
                       const cleanT = t.trim();
                       const d = attendance[targetId];
                       const fStat = getFinalTaskStatus(targetId, cleanT, d);
@@ -544,7 +544,7 @@ const App = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-6">
-                  {activeStudent ? prevTasks.map((t, idx) => {
+                  {activeStudent ? displayItems.map((t, idx) => {
                     const cleanT = t.trim();
                     return (
                       <label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-cyan-50 border-cyan-500 text-cyan-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-cyan-300 hover:bg-slate-50'}`}>
@@ -554,7 +554,7 @@ const App = () => {
                     )
                   }) : (
                     <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
-                      {prevTasks.length > 0 && prevTasks.every(t => viewOnlyStudent.tasks[t] || viewOnlyStudent.tasks[t.trim()]) ? (
+                      {displayItems.length > 0 && displayItems.every(t => viewOnlyStudent.tasks[t] || viewOnlyStudent.tasks[t.trim()]) ? (
                         <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
                           <Smile size={200} className="text-cyan-500 drop-shadow-xl animate-bounce" />
                           <p className="text-6xl font-black text-cyan-600 tracking-wider">今日任務已繳交</p>
@@ -565,7 +565,7 @@ const App = () => {
                             <XOctagon size={48} className="text-red-600" />
                             <p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p>
                           </div>
-                          {prevTasks.filter(t => !viewOnlyStudent.tasks[t] && !viewOnlyStudent.tasks[t.trim()]).map((t, idx) => (
+                          {displayItems.filter(t => !viewOnlyStudent.tasks[t] && !viewOnlyStudent.tasks[t.trim()]).map((t, idx) => (
                             <div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{t.trim()}</span></div>
                           ))}
                         </div>
@@ -588,7 +588,6 @@ const App = () => {
         );
       })()}
 
-      {/* 列印報表區域 (即時讀取 Live Sync 數據) */}
       <div className="hidden print:block p-8 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
         <div className="grid grid-cols-2 gap-8">
