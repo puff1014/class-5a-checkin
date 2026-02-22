@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History } from 'lucide-react';
 
-const APP_VERSION = "V16.0.260222_Perfect_Vision";
+const APP_VERSION = "V17.0.260223_Live_Sync_Edition";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -34,7 +34,6 @@ const App = () => {
   const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
   const [monthlyStats, setMonthlyStats] = useState({});
   
-  // 版面拖拉狀態
   const [w1, setW1] = useState(25);
   const [w2, setW2] = useState(25);
 
@@ -52,7 +51,6 @@ const App = () => {
     onSnapshot(collection(db, "announcements"), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
   }, [db]);
 
-  // 主視窗資料監聽
   useEffect(() => {
     if (!db) return;
     const dateKey = formatDate(viewDate);
@@ -77,7 +75,6 @@ const App = () => {
     fetchPrev();
   }, [db, viewDate, isEditing]);
 
-  // --- 核心判定引擎 ---
   const getAutoAttStatus = (id, time) => {
     if (!time) return 'absent';
     const [h, m, s] = time.split(':').map(Number);
@@ -88,7 +85,7 @@ const App = () => {
 
   const getFinalAttStatus = (id, attData) => {
     if (!attData) return 'absent';
-    if (attData.manualAtt) return attData.manualAtt;
+    if (attData.manualAtt) return attData.manualAtt; 
     if (attData.status === 'sick') return 'sick';
     if (attData.status === 'personal') return 'personal';
     return getAutoAttStatus(id, attData.checkinTime);
@@ -111,7 +108,7 @@ const App = () => {
     return 'done';
   };
 
-  // 背景靜默計算每月報表 (包含彈窗歷史紀錄)
+  // 背景靜默計算每月報表 (即時更新)
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -119,21 +116,34 @@ const App = () => {
       const monthStr = activeStatMonth.replace('月', '').padStart(2, '0');
       const targetDates = recordedDates.filter(d => d.split('-')[1] === monthStr);
       const stats = {};
-      STUDENTS.forEach(s => stats[s.id] = { 
-        onTime: 0, late: 0, sick: 0, personal: 0, 
-        fullDoneDays: 0, lateDays: 0, missingDays: 0, 
-        issues: [], dailyRecords: {} 
-      });
+      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
 
       for (const dKey of targetDates) {
         const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
+        const attMap = {};
+        attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
+        
         const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "==", dKey)));
         const dailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
+        const isCurrentView = dKey === formatDate(viewDate);
 
-        attSnap.forEach(doc => {
-          const sid = doc.id;
-          if (!stats[sid]) return;
-          const d = doc.data();
+        STUDENTS.forEach(student => {
+          const sid = student.id;
+          const d = (isCurrentView && attendance[sid]) ? attendance[sid] : attMap[sid];
+
+          if (!d) {
+            stats[sid].dailyRecords[dKey] = { att: 'absent', missingList: [], lateList: [], allDone: false };
+            if (dailyTasks.length > 0) {
+              stats[sid].missingDays++;
+              dailyTasks.forEach(t => {
+                stats[sid].issues.push(`${dKey.slice(5)}: ${t.trim()} (缺交)`);
+                stats[sid].dailyRecords[dKey].missingList.push(t.trim());
+              });
+            } else {
+              stats[sid].dailyRecords[dKey].allDone = true;
+            }
+            return; 
+          }
           
           const finalAtt = getFinalAttStatus(sid, d);
           if (finalAtt === 'on-time') stats[sid].onTime++;
@@ -141,14 +151,7 @@ const App = () => {
           else if (finalAtt === 'sick') stats[sid].sick++;
           else if (finalAtt === 'personal') stats[sid].personal++;
 
-          // 紀錄每日歷程
-          stats[sid].dailyRecords[dKey] = {
-            att: finalAtt,
-            time: d.checkinTime,
-            missingList: [],
-            lateList: [],
-            allDone: false
-          };
+          stats[sid].dailyRecords[dKey] = { att: finalAtt, missingList: [], lateList: [], allDone: false };
           
           if (dailyTasks.length > 0) {
             let missingCount = 0;
@@ -175,7 +178,7 @@ const App = () => {
               stats[sid].dailyRecords[dKey].allDone = true;
             }
           } else {
-            stats[sid].dailyRecords[dKey].allDone = true; // 沒任務算齊全
+            stats[sid].dailyRecords[dKey].allDone = true;
           }
         });
       }
@@ -183,7 +186,7 @@ const App = () => {
     };
     fetchMonth();
     return () => { isMounted = false; };
-  }, [db, activeStatMonth, recordedDates, attendance]);
+  }, [db, activeStatMonth, recordedDates, attendance, viewDate]);
 
   const cycleManualAtt = async (studentId) => {
     if (!user) return;
@@ -201,32 +204,38 @@ const App = () => {
     const cleanT = taskName.trim();
     const d = attendance[studentId] || {};
     
-    // 防錯機制：避開 Firebase dot notation 不能有特殊字元的限制
     const currentManualTasks = d.manualTasks || {};
     const currentStatus = currentManualTasks[cleanT] || 'auto';
     const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
     const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
     
-    const updatedTasks = { ...currentManualTasks, [cleanT]: nextStatus === 'auto' ? null : nextStatus };
+    const updatedTasks = { ...currentManualTasks };
+    if (nextStatus === 'auto') {
+      delete updatedTasks[cleanT];
+    } else {
+      updatedTasks[cleanT] = nextStatus;
+    }
+    
     await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
   };
 
+  // 狀態顯示 (字體大幅放大)
   const getStatusDisplay = (status, type) => {
     if (type === 'att') {
       switch(status) {
-        case 'on-time': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg">準時</span>;
-        case 'late': return <span className="bg-pink-100 text-pink-700 px-3 py-1 rounded-lg">遲到</span>;
-        case 'sick': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg">病假</span>;
-        case 'personal': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-lg">事假</span>;
-        default: return <span className="bg-slate-100 text-slate-400 px-3 py-1 rounded-lg">未簽到</span>;
+        case 'on-time': return <span className="bg-emerald-100 text-emerald-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">準時</span>;
+        case 'late': return <span className="bg-pink-100 text-pink-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">遲到</span>;
+        case 'sick': return <span className="bg-purple-100 text-purple-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">病假</span>;
+        case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">事假</span>;
+        default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">未簽到</span>;
       }
     } else {
       switch(status) {
-        case 'done': return <span className="bg-sky-100 text-sky-700 px-3 py-1 rounded-lg border border-sky-200">齊全</span>;
-        case 'late': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg border border-amber-200">遲交</span>;
-        case 'missing': return <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg border border-rose-200">缺交</span>;
-        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-3 py-1 rounded-lg border border-slate-300">免交</span>;
-        default: return <span className="bg-slate-100 text-slate-400 px-3 py-1 rounded-lg">未知</span>;
+        case 'done': return <span className="bg-cyan-100 text-cyan-800 px-4 py-2 rounded-xl border border-cyan-300 font-bold">齊全</span>;
+        case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border border-amber-300 font-bold">遲交</span>;
+        case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border border-rose-300 font-bold">缺交</span>;
+        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border border-slate-400 font-bold">免交</span>;
+        default: return <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-xl">未知</span>;
       }
     }
   };
@@ -258,7 +267,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-none overflow-x-hidden">
-      {/* 頂部 Header */}
+      {/* Header */}
       <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
         <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
           <div className="flex items-center gap-6">
@@ -304,12 +313,12 @@ const App = () => {
         </div>
       </header>
 
-      {/* 主視窗：解除高度鎖定，不再產生內部捲動軸 */}
-      <main className="flex flex-col lg:flex-row p-4 gap-2 min-h-[600px] print:hidden">
+      {/* 主視窗：解除鎖死高度，不再有內部捲動軸 */}
+      <main className="flex flex-col lg:flex-row p-4 gap-2 print:hidden items-stretch pb-12">
         {/* 1. 簽到區 */}
-        <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 shrink-0">
-          <h2 className="text-3xl font-black mb-4 text-sky-800 flex items-center gap-3 px-2 shrink-0"><UserCheck size={40}/> 航海員簽到</h2>
-          <div className="grid grid-cols-2 gap-4 auto-rows-fr">
+        <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
+          <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><UserCheck size={40}/> 航海員簽到</h2>
+          <div className="grid grid-cols-2 gap-4 flex-1">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const attStat = getFinalAttStatus(s.id, d);
@@ -322,13 +331,13 @@ const App = () => {
                 color = 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm';
                 textStatus = d?.checkinTime || '準時';
               } else if (attStat === 'late') {
-                color = 'bg-pink-100 text-pink-600 border-pink-200 shadow-sm';
+                color = 'bg-pink-50 text-pink-600 border-pink-200 shadow-sm';
                 textStatus = d?.checkinTime || '遲到';
               } else if (attStat === 'sick') {
-                color = 'bg-purple-50 text-purple-700 border-purple-100 shadow-sm'; // 柔和紫色
+                color = 'bg-purple-50 text-purple-700 border-purple-100 shadow-sm'; 
                 textStatus = '病假';
               } else if (attStat === 'personal') {
-                color = 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm'; // 柔和橘色
+                color = 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm'; 
                 textStatus = '事假';
               }
               
@@ -350,10 +359,10 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 2. 進度區 */}
-        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-4 flex flex-col border border-sky-50 shrink-0">
-          <h2 className="text-3xl font-black mb-4 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
-          <div className="grid grid-cols-1 gap-3 auto-rows-fr">
+        {/* 2. 進度區 (海洋風格：湖水綠 Cyan-500) */}
+        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
+          <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
+          <div className="flex flex-col gap-4 flex-1 justify-between">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const hw = d?.completedTasks || {};
@@ -361,10 +370,10 @@ const App = () => {
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               return (
-                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-11 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-emerald-50 border-emerald-200' : 'bg-sky-50/30 border-sky-100 hover:bg-sky-100'}`}>
+                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-teal-50 border-teal-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
                   <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
-                  <div className="flex-1 h-3 bg-slate-100 rounded-full mx-4 overflow-hidden shadow-inner"><div className="h-full bg-sky-500 transition-all duration-700" style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
-                  <span className="text-3xl font-black text-sky-600 w-20 text-right">{comp}/{total}</span>
+                  <div className="flex-1 h-4 bg-teal-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-teal-500' : 'bg-sky-500'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
+                  <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-teal-700' : 'text-sky-600'}`}>{comp}/{total}</span>
                 </div>
               );
             })}
@@ -379,9 +388,9 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 3. 任務區 */}
+        {/* 3. 任務區 (數字改為黃色系列) */}
         <div className="flex-1 bg-[#0C4A6E] rounded-[3rem] shadow-xl p-8 text-white flex flex-col shrink-0 min-w-0">
-          <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4 shrink-0">
+          <div className="flex justify-between items-center mb-6 border-b border-white/20 pb-4 shrink-0">
             <h2 className="text-4xl font-black flex items-center gap-4 text-sky-200 drop-shadow-md"><ScrollText size={48}/> 任務發布區</h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/10 p-2 rounded-2xl shadow-inner">
@@ -405,12 +414,12 @@ const App = () => {
             {isEditing ? (
               <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} 
                 style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
-                className={`flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[350px] ${useBiauKai ? 'font-normal' : 'font-black'}`} />
+                className={`flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] ${useBiauKai ? 'font-normal' : 'font-black'}`} />
             ) : (
               <div style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit', fontSize: `${fontSize}px`, lineHeight: lineHeight }} className={useBiauKai ? 'font-normal tracking-wide' : 'font-black'}>
                 {displayItems.map((item, i) => (
                   <div key={i} className="flex items-start gap-8 border-b border-white/5 pb-2 mb-2 last:border-0 last:mb-0 transition-all">
-                    <span className="flex-shrink-0 w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg border-4 border-orange-200/50 font-sans font-black">{i+1}</span>
+                    <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200/80 font-sans font-black">{i+1}</span>
                     <span className="text-white drop-shadow-sm pt-1 tracking-wide">{item}</span>
                   </div>
                 ))}
@@ -421,39 +430,39 @@ const App = () => {
       </main>
 
       {/* 每月分析報表 */}
-      <section className="mx-4 mb-8 bg-white rounded-[3rem] p-6 shadow-2xl border-4 border-sky-100 flex flex-col shrink-0 min-h-[300px] print:hidden">
-        <div className="flex justify-between items-center mb-4 px-2">
+      <section className="mx-4 mb-12 bg-white rounded-[3rem] p-8 shadow-2xl border-4 border-sky-100 flex flex-col print:hidden">
+        <div className="flex justify-between items-center mb-6 px-2">
           <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> {activeStatMonth} 分析報表</h3>
           <div className="flex gap-4 items-center">
             <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-sky-50 border-2 border-sky-200 text-sky-700 rounded-2xl px-6 py-2 font-black text-2xl outline-none shadow-sm cursor-pointer hover:bg-sky-100 transition-colors">
               {["2月", "3月", "4月", "5月", "6月", "7月"].map(m => <option key={m} value={m}>{m} 統計</option>)}
             </select>
-            {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-violet-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-violet-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
+            {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
         </div>
-        <div className="flex-1 overflow-auto rounded-[2rem] border-2 border-sky-50 relative custom-scrollbar">
+        <div className="overflow-auto rounded-[2rem] border-2 border-sky-50">
           <table className="w-full text-center table-fixed border-collapse">
-            <thead className="sticky top-0 z-40 text-white shadow-md">
+            <thead className="text-white shadow-md">
               <tr className="text-2xl font-black">
-                <th className="p-4 bg-sky-950 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
-                <th className="p-4 bg-cyan-700 border-r border-cyan-600 w-[35%]">出席狀況</th>
-                <th className="p-4 bg-blue-600">任務繳交 (天數)</th>
+                <th className="p-5 bg-sky-900 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
+                <th className="p-5 bg-sky-700 border-r border-sky-600 w-[35%]">出席狀況</th>
+                <th className="p-5 bg-blue-600">任務繳交 (天數)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-sky-100">
               {STUDENTS.map(s => {
                 const sData = monthlyStats[s.id];
                 return (
-                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer" onClick={() => setViewOnlyStudent({ student: s, fullHistory: sData })}>
-                    <td className="p-4 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 hover:text-sky-600">{maskName(s.name)}</td>
-                    <td className="p-4 border-r-2 border-sky-50">
+                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer group" onClick={() => sData && setViewOnlyStudent({ student: s, isHistory: true })}>
+                    <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 group-hover:bg-sky-50/50 transition-all">{maskName(s.name)}</td>
+                    <td className="p-5 border-r-2 border-sky-50">
                       <div className="flex justify-center items-center gap-6 text-2xl font-black">
                         <div className="flex items-center gap-2 text-emerald-600"><CheckCircle2 size={28}/> 準時: {sData ? sData.onTime : '--'}</div>
                         <div className="flex items-center gap-2 text-pink-500"><Clock size={28}/> 遲到: {sData ? sData.late : '--'}</div>
                         <div className="flex items-center gap-2 text-slate-400"><UserMinus size={28}/> 未到: {sData ? (sData.sick + sData.personal) : '--'}</div>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-5">
                       <div className="flex justify-center items-center gap-10 text-2xl font-black">
                         <div className="flex items-center gap-2 text-sky-600"><Trophy size={32} className="text-sky-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div>
                         <div className="flex items-center gap-2 text-amber-500"><History size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div>
@@ -468,60 +477,63 @@ const App = () => {
         </div>
       </section>
 
-      {/* 彈窗系統 (打卡修改 / 個人歷程) */}
-      {(activeStudent || viewOnlyStudent) && (
+      {/* 彈窗系統 (資料綁定 monthlyStats 實現 Live Sync) */}
+      {(activeStudent || viewOnlyStudent) && (() => {
+        // 從活水數據池抓取最新資料
+        const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
+        const liveMonthData = monthlyStats[targetId];
+
+        return (
         <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
           <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
             <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
               <h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">
                 {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
                 <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">
-                  {viewOnlyStudent?.fullHistory ? `📅 ${activeStatMonth} 學習歷程` : `任務確認 - ${formatDate(viewDate)}`}
+                  {viewOnlyStudent?.isHistory ? `${activeStatMonth} 學習歷程` : `任務確認 - ${formatDate(viewDate)}`}
                 </span>
               </h3>
               <button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button>
             </div>
             
             <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
-              {/* 月份歷程檢視 */}
-              {viewOnlyStudent?.fullHistory ? (
+              {viewOnlyStudent?.isHistory ? (
                 <div className="space-y-4">
-                  {Object.entries(viewOnlyStudent.fullHistory.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (
+                  {liveMonthData && Object.entries(liveMonthData.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (
                     <div key={date} className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-4">
-                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-2">
-                        <span className="text-3xl font-black text-sky-800">{date}</span>
+                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-3">
+                        <span className="text-4xl font-black text-sky-800">{date}</span>
                         {getStatusDisplay(rec.att, 'att')}
                       </div>
-                      <div className="flex gap-3 flex-wrap">
-                        {rec.allDone && <span className="text-2xl font-black text-sky-600">✓ 任務齊全</span>}
-                        {rec.missingList.map(m => <span key={`m-${m}`} className="px-4 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xl font-bold">{m} (缺交)</span>)}
-                        {rec.lateList.map(l => <span key={`l-${l}`} className="px-4 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl text-xl font-bold">{l} (遲交)</span>)}
+                      <div className="flex gap-3 flex-wrap pt-2">
+                        {rec.allDone && <span className="text-3xl font-black text-sky-600 flex items-center gap-2"><CheckCircle2 size={32}/> 任務齊全</span>}
+                        {rec.missingList.map(m => <span key={`m-${m}`} className="px-5 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-2xl font-bold shadow-sm">{m} (缺交)</span>)}
+                        {rec.lateList.map(l => <span key={`l-${l}`} className="px-5 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-2xl font-bold shadow-sm">{l} (遲交)</span>)}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : viewOnlyStudent && user ? (
-                /* 教師手動修改模式 */
                 <div className="flex flex-col gap-6">
                   <div className="bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-200 flex items-center gap-6">
                     <span className="text-4xl font-black text-slate-700">出席狀態：</span>
-                    <button onClick={() => cycleManualAtt(viewOnlyStudent.student.id)} className="flex items-center gap-3 text-3xl font-black transition-transform active:scale-95 hover:opacity-80">
-                      {getStatusDisplay(getFinalAttStatus(viewOnlyStudent.student.id, attendance[viewOnlyStudent.student.id]), 'att')}
-                      {attendance[viewOnlyStudent.student.id]?.manualAtt && <span className="text-xl text-indigo-500 flex items-center gap-1"><Edit3 size={20}/> 手動修改</span>}
+                    <button onClick={() => cycleManualAtt(targetId)} className="flex items-center gap-3 transition-transform active:scale-95 hover:opacity-80">
+                      {getStatusDisplay(getFinalAttStatus(targetId, attendance[targetId]), 'att')}
+                      {attendance[targetId]?.manualAtt && <span className="text-xl font-bold text-indigo-500 flex items-center gap-1 bg-indigo-50 px-3 py-1 rounded-full"><Edit3 size={20}/> 手動修改</span>}
                     </button>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4">
                     {prevTasks.map((t, idx) => {
                       const cleanT = t.trim();
-                      const d = attendance[viewOnlyStudent.student.id];
-                      const fStat = getFinalTaskStatus(viewOnlyStudent.student.id, cleanT, d);
+                      const d = attendance[targetId];
+                      const fStat = getFinalTaskStatus(targetId, cleanT, d);
                       const isManual = !!d?.manualTasks?.[cleanT];
                       
                       return (
                         <div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors">
                           <span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span>
-                          <button onClick={() => cycleManualTask(viewOnlyStudent.student.id, cleanT)} className="flex items-center gap-3 text-2xl font-black shrink-0 transition-transform active:scale-95 hover:opacity-80">
+                          <button onClick={() => cycleManualTask(targetId, cleanT)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">
                             {getStatusDisplay(fStat, 'task')}
                             {isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}
                           </button>
@@ -531,13 +543,12 @@ const App = () => {
                   </div>
                 </div>
               ) : (
-                /* 學生打卡模式 */
                 <div className="grid grid-cols-3 gap-6">
                   {activeStudent ? prevTasks.map((t, idx) => {
                     const cleanT = t.trim();
                     return (
-                      <label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-emerald-300 hover:bg-slate-50'}`}>
-                        <input type="checkbox" checked={!!(selectedTasks[cleanT] || selectedTasks[t])} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-emerald-600 cursor-pointer" />
+                      <label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-cyan-50 border-cyan-500 text-cyan-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-cyan-300 hover:bg-slate-50'}`}>
+                        <input type="checkbox" checked={!!(selectedTasks[cleanT] || selectedTasks[t])} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-cyan-600 cursor-pointer" />
                         <span className="text-4xl font-black leading-tight">{cleanT}</span>
                       </label>
                     )
@@ -545,8 +556,8 @@ const App = () => {
                     <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
                       {prevTasks.length > 0 && prevTasks.every(t => viewOnlyStudent.tasks[t] || viewOnlyStudent.tasks[t.trim()]) ? (
                         <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
-                          <Smile size={200} className="text-emerald-500 drop-shadow-xl animate-bounce" />
-                          <p className="text-6xl font-black text-emerald-600 tracking-wider">今日任務已繳交</p>
+                          <Smile size={200} className="text-cyan-500 drop-shadow-xl animate-bounce" />
+                          <p className="text-6xl font-black text-cyan-600 tracking-wider">今日任務已繳交</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-3 gap-6 w-full px-4">
@@ -565,7 +576,6 @@ const App = () => {
               )}
             </div>
 
-            {/* 打卡按鈕 */}
             {activeStudent && (
               <div className="grid grid-cols-3 gap-6 shrink-0 h-28 mt-8 border-t-4 border-slate-50 pt-8">
                 <button onClick={() => submitCheckin('present')} className="bg-sky-500 text-white rounded-[2rem] text-4xl font-black shadow-xl hover:bg-sky-600 transition-all active:scale-95">確認打卡</button>
@@ -575,9 +585,10 @@ const App = () => {
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
-      {/* 列印報表區域 */}
+      {/* 列印報表區域 (即時讀取 Live Sync 數據) */}
       <div className="hidden print:block p-8 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
         <div className="grid grid-cols-2 gap-8">
