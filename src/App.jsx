@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History } from 'lucide-react';
 
-const APP_VERSION = "V17.0.260223_Live_Sync_Edition";
+const APP_VERSION = "V16.1.260223_Ocean_Sync";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -34,8 +34,10 @@ const App = () => {
   const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
   const [monthlyStats, setMonthlyStats] = useState({});
   
+  // 版面拖拉狀態與重載扳機
   const [w1, setW1] = useState(25);
   const [w2, setW2] = useState(25);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   useEffect(() => {
     const app = initializeApp(firebaseConfig);
@@ -51,6 +53,7 @@ const App = () => {
     onSnapshot(collection(db, "announcements"), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
   }, [db]);
 
+  // 主視窗資料監聽
   useEffect(() => {
     if (!db) return;
     const dateKey = formatDate(viewDate);
@@ -75,6 +78,7 @@ const App = () => {
     fetchPrev();
   }, [db, viewDate, isEditing]);
 
+  // --- 核心判定引擎 ---
   const getAutoAttStatus = (id, time) => {
     if (!time) return 'absent';
     const [h, m, s] = time.split(':').map(Number);
@@ -101,6 +105,7 @@ const App = () => {
 
   const getFinalTaskStatus = (id, originalTaskName, attData) => {
     const cleanName = originalTaskName.trim();
+    // 優先讀取老師手動修改的狀態
     if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
     const hw = attData?.completedTasks || {};
     if (!hw[originalTaskName] && !hw[cleanName]) return 'missing';
@@ -108,7 +113,7 @@ const App = () => {
     return 'done';
   };
 
-  // 背景靜默計算每月報表 (即時更新)
+  // 背景靜默計算每月報表 (加入 refreshCounter 實現瞬間連動)
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -186,7 +191,7 @@ const App = () => {
     };
     fetchMonth();
     return () => { isMounted = false; };
-  }, [db, activeStatMonth, recordedDates, attendance, viewDate]);
+  }, [db, activeStatMonth, recordedDates, attendance, viewDate, refreshCounter]);
 
   const cycleManualAtt = async (studentId) => {
     if (!user) return;
@@ -195,7 +200,9 @@ const App = () => {
     const current = d.manualAtt || 'auto';
     const cycle = ['auto', 'on-time', 'late', 'sick', 'personal'];
     const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+    
     await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualAtt: next === 'auto' ? null : next }, { merge: true });
+    setRefreshCounter(prev => prev + 1); // 觸發報表重算
   };
 
   const cycleManualTask = async (studentId, taskName) => {
@@ -209,17 +216,19 @@ const App = () => {
     const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
     const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
     
+    // 使用整包物件替換，並用 null 取代刪除，繞過 Firebase 語法限制
     const updatedTasks = { ...currentManualTasks };
     if (nextStatus === 'auto') {
-      delete updatedTasks[cleanT];
+      updatedTasks[cleanT] = null; 
     } else {
       updatedTasks[cleanT] = nextStatus;
     }
     
     await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
+    setRefreshCounter(prev => prev + 1); // 觸發報表重算，瞬間連動
   };
 
-  // 狀態顯示 (字體大幅放大)
+  // 狀態顯示 (字體放大)
   const getStatusDisplay = (status, type) => {
     if (type === 'att') {
       switch(status) {
@@ -231,10 +240,10 @@ const App = () => {
       }
     } else {
       switch(status) {
-        case 'done': return <span className="bg-cyan-100 text-cyan-800 px-4 py-2 rounded-xl border border-cyan-300 font-bold">齊全</span>;
-        case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border border-amber-300 font-bold">遲交</span>;
-        case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border border-rose-300 font-bold">缺交</span>;
-        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border border-slate-400 font-bold">免交</span>;
+        case 'done': return <span className="bg-sky-100 text-sky-800 px-4 py-2 rounded-xl border-2 border-sky-300 font-bold">齊全</span>;
+        case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border-2 border-amber-300 font-bold">遲交</span>;
+        case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border-2 border-rose-300 font-bold">缺交</span>;
+        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border-2 border-slate-400 font-bold">免交</span>;
         default: return <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-xl">未知</span>;
       }
     }
@@ -267,7 +276,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-none overflow-x-hidden">
-      {/* Header */}
+      {/* 頂部 Header */}
       <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
         <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
           <div className="flex items-center gap-6">
@@ -313,7 +322,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* 主視窗：解除鎖死高度，不再有內部捲動軸 */}
+      {/* 主視窗：解除鎖定高度，無內部捲動軸 */}
       <main className="flex flex-col lg:flex-row p-4 gap-2 print:hidden items-stretch pb-12">
         {/* 1. 簽到區 */}
         <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
@@ -359,7 +368,7 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 2. 進度區 (海洋風格：湖水綠 Cyan-500) */}
+        {/* 2. 進度區 (海浪藍 Theme) */}
         <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
           <div className="flex flex-col gap-4 flex-1 justify-between">
@@ -370,10 +379,10 @@ const App = () => {
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               return (
-                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-teal-50 border-teal-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
+                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
                   <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
-                  <div className="flex-1 h-4 bg-teal-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-teal-500' : 'bg-sky-500'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
-                  <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-teal-700' : 'text-sky-600'}`}>{comp}/{total}</span>
+                  <div className="flex-1 h-4 bg-blue-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-blue-500' : 'bg-sky-400'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
+                  <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-blue-700' : 'text-slate-500'}`}>{comp}/{total}</span>
                 </div>
               );
             })}
@@ -388,7 +397,7 @@ const App = () => {
             document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
           }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
 
-        {/* 3. 任務區 (數字改為黃色系列) */}
+        {/* 3. 任務區 (數字黃色) */}
         <div className="flex-1 bg-[#0C4A6E] rounded-[3rem] shadow-xl p-8 text-white flex flex-col shrink-0 min-w-0">
           <div className="flex justify-between items-center mb-6 border-b border-white/20 pb-4 shrink-0">
             <h2 className="text-4xl font-black flex items-center gap-4 text-sky-200 drop-shadow-md"><ScrollText size={48}/> 任務發布區</h2>
@@ -444,7 +453,7 @@ const App = () => {
           <table className="w-full text-center table-fixed border-collapse">
             <thead className="text-white shadow-md">
               <tr className="text-2xl font-black">
-                <th className="p-5 bg-sky-900 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
+                <th className="p-5 bg-sky-950 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th>
                 <th className="p-5 bg-sky-700 border-r border-sky-600 w-[35%]">出席狀況</th>
                 <th className="p-5 bg-blue-600">任務繳交 (天數)</th>
               </tr>
@@ -464,7 +473,7 @@ const App = () => {
                     </td>
                     <td className="p-5">
                       <div className="flex justify-center items-center gap-10 text-2xl font-black">
-                        <div className="flex items-center gap-2 text-sky-600"><Trophy size={32} className="text-sky-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div>
+                        <div className="flex items-center gap-2 text-blue-600"><Trophy size={32} className="text-blue-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div>
                         <div className="flex items-center gap-2 text-amber-500"><History size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div>
                         <div className="flex items-center gap-2 text-rose-500"><AlertTriangle size={32}/> 缺交: {sData ? sData.missingDays : '--'}</div>
                       </div>
@@ -477,9 +486,8 @@ const App = () => {
         </div>
       </section>
 
-      {/* 彈窗系統 (資料綁定 monthlyStats 實現 Live Sync) */}
+      {/* 彈窗系統 (Live Sync) */}
       {(activeStudent || viewOnlyStudent) && (() => {
-        // 從活水數據池抓取最新資料
         const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
         const liveMonthData = monthlyStats[targetId];
 
@@ -500,13 +508,13 @@ const App = () => {
               {viewOnlyStudent?.isHistory ? (
                 <div className="space-y-4">
                   {liveMonthData && Object.entries(liveMonthData.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (
-                    <div key={date} className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-4">
-                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-3">
+                    <div key={date} className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-5">
+                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-4">
                         <span className="text-4xl font-black text-sky-800">{date}</span>
                         {getStatusDisplay(rec.att, 'att')}
                       </div>
                       <div className="flex gap-3 flex-wrap pt-2">
-                        {rec.allDone && <span className="text-3xl font-black text-sky-600 flex items-center gap-2"><CheckCircle2 size={32}/> 任務齊全</span>}
+                        {rec.allDone && <span className="text-3xl font-black text-blue-600 flex items-center gap-2"><CheckCircle2 size={32}/> 任務齊全</span>}
                         {rec.missingList.map(m => <span key={`m-${m}`} className="px-5 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-2xl font-bold shadow-sm">{m} (缺交)</span>)}
                         {rec.lateList.map(l => <span key={`l-${l}`} className="px-5 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-2xl font-bold shadow-sm">{l} (遲交)</span>)}
                       </div>
@@ -547,8 +555,8 @@ const App = () => {
                   {activeStudent ? prevTasks.map((t, idx) => {
                     const cleanT = t.trim();
                     return (
-                      <label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-cyan-50 border-cyan-500 text-cyan-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-cyan-300 hover:bg-slate-50'}`}>
-                        <input type="checkbox" checked={!!(selectedTasks[cleanT] || selectedTasks[t])} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-cyan-600 cursor-pointer" />
+                      <label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}>
+                        <input type="checkbox" checked={!!(selectedTasks[cleanT] || selectedTasks[t])} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-blue-600 cursor-pointer" />
                         <span className="text-4xl font-black leading-tight">{cleanT}</span>
                       </label>
                     )
@@ -556,8 +564,8 @@ const App = () => {
                     <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
                       {prevTasks.length > 0 && prevTasks.every(t => viewOnlyStudent.tasks[t] || viewOnlyStudent.tasks[t.trim()]) ? (
                         <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
-                          <Smile size={200} className="text-cyan-500 drop-shadow-xl animate-bounce" />
-                          <p className="text-6xl font-black text-cyan-600 tracking-wider">今日任務已繳交</p>
+                          <Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" />
+                          <p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-3 gap-6 w-full px-4">
@@ -588,7 +596,7 @@ const App = () => {
         );
       })()}
 
-      {/* 列印報表區域 (即時讀取 Live Sync 數據) */}
+      {/* 列印報表區域 */}
       <div className="hidden print:block p-8 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
         <div className="grid grid-cols-2 gap-8">
