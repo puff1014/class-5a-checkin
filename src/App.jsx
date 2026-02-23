@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History } from 'lucide-react';
 
-const APP_VERSION = "V16.1.260223_Ocean_Sync";
+const APP_VERSION = "V18.0.260223_Unified_Engine";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -34,7 +34,6 @@ const App = () => {
   const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
   const [monthlyStats, setMonthlyStats] = useState({});
   
-  // 版面拖拉狀態與重載扳機
   const [w1, setW1] = useState(25);
   const [w2, setW2] = useState(25);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -78,7 +77,6 @@ const App = () => {
     fetchPrev();
   }, [db, viewDate, isEditing]);
 
-  // --- 核心判定引擎 ---
   const getAutoAttStatus = (id, time) => {
     if (!time) return 'absent';
     const [h, m, s] = time.split(':').map(Number);
@@ -103,9 +101,9 @@ const App = () => {
     return totalS >= 7 * 3600 + 40 * 60 + 1;
   };
 
+  // 統一判定引擎
   const getFinalTaskStatus = (id, originalTaskName, attData) => {
     const cleanName = originalTaskName.trim();
-    // 優先讀取老師手動修改的狀態
     if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
     const hw = attData?.completedTasks || {};
     if (!hw[originalTaskName] && !hw[cleanName]) return 'missing';
@@ -113,7 +111,7 @@ const App = () => {
     return 'done';
   };
 
-  // 背景靜默計算每月報表 (加入 refreshCounter 實現瞬間連動)
+  // 背景靜默計算每月報表 (修正 Bug：全面對齊打卡任務 `< dKey`)
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -128,7 +126,8 @@ const App = () => {
         const attMap = {};
         attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
         
-        const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "==", dKey)));
+        // 關鍵修正：報表抓取的任務與打卡任務(prevTasks)同步，皆為前一次發布的任務
+        const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
         const dailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
         const isCurrentView = dKey === formatDate(viewDate);
 
@@ -193,6 +192,7 @@ const App = () => {
     return () => { isMounted = false; };
   }, [db, activeStatMonth, recordedDates, attendance, viewDate, refreshCounter]);
 
+  // 教師修改引擎 (加入 refreshCounter 觸發瞬間連動)
   const cycleManualAtt = async (studentId) => {
     if (!user) return;
     const dateKey = formatDate(viewDate);
@@ -201,8 +201,8 @@ const App = () => {
     const cycle = ['auto', 'on-time', 'late', 'sick', 'personal'];
     const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
     
-    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualAtt: next === 'auto' ? null : next }, { merge: true });
-    setRefreshCounter(prev => prev + 1); // 觸發報表重算
+    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualAtt: next === 'auto' ? deleteField() : next }, { merge: true });
+    setRefreshCounter(prev => prev + 1);
   };
 
   const cycleManualTask = async (studentId, taskName) => {
@@ -216,31 +216,30 @@ const App = () => {
     const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
     const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
     
-    // 使用整包物件替換，並用 null 取代刪除，繞過 Firebase 語法限制
     const updatedTasks = { ...currentManualTasks };
     if (nextStatus === 'auto') {
-      updatedTasks[cleanT] = null; 
+      updatedTasks[cleanT] = null; // 繞過 Firebase deleteField 特殊字元限制
     } else {
       updatedTasks[cleanT] = nextStatus;
     }
     
     await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
-    setRefreshCounter(prev => prev + 1); // 觸發報表重算，瞬間連動
+    setRefreshCounter(prev => prev + 1); // 強制報表重算
   };
 
-  // 狀態顯示 (字體放大)
+  // 狀態顯示 (超大字體)
   const getStatusDisplay = (status, type) => {
     if (type === 'att') {
       switch(status) {
-        case 'on-time': return <span className="bg-emerald-100 text-emerald-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">準時</span>;
-        case 'late': return <span className="bg-pink-100 text-pink-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">遲到</span>;
-        case 'sick': return <span className="bg-purple-100 text-purple-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">病假</span>;
-        case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">事假</span>;
-        default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-4xl font-black shadow-sm tracking-wide">未簽到</span>;
+        case 'on-time': return <span className="bg-emerald-100 text-emerald-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-emerald-200">準時</span>;
+        case 'late': return <span className="bg-pink-100 text-pink-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-pink-200">遲到</span>;
+        case 'sick': return <span className="bg-purple-100 text-purple-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-purple-200">病假</span>;
+        case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-orange-200">事假</span>;
+        default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest">未簽到</span>;
       }
     } else {
       switch(status) {
-        case 'done': return <span className="bg-sky-100 text-sky-800 px-4 py-2 rounded-xl border-2 border-sky-300 font-bold">齊全</span>;
+        case 'done': return <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl border-2 border-blue-300 font-bold">齊全</span>;
         case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border-2 border-amber-300 font-bold">遲交</span>;
         case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border-2 border-rose-300 font-bold">缺交</span>;
         case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border-2 border-slate-400 font-bold">免交</span>;
@@ -296,9 +295,16 @@ const App = () => {
         </div>
 
         <div className="px-8 py-3 flex items-center justify-between bg-sky-50/40">
+          {/* 加入月份選單，與下方報表連動 */}
           <div className="flex items-center gap-4">
-            <span className="font-bold text-sky-700 text-2xl mr-2">航行日：</span>
-            <div className="flex items-center gap-2 overflow-x-auto max-w-[50vw] scrollbar-hide py-1">
+            <div className="flex items-center gap-2 bg-sky-100/50 px-4 py-1.5 rounded-2xl border border-sky-200 shadow-inner">
+              <span className="font-bold text-sky-800 text-2xl">航行月：</span>
+              <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-white border-2 border-sky-300 text-sky-700 rounded-xl px-2 py-1 font-black text-xl outline-none cursor-pointer hover:bg-sky-50 transition-colors">
+                {["1月", "2月", "3月", "4月", "5月", "6月"].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="w-px h-8 bg-sky-200 mx-1"></div>
+            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1">
               {recordedDates.filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth)).map(d => (
                 <button key={d} onClick={(e) => { if(user && e.altKey) handleDeleteDate(d); else setViewDate(new Date(d)); }} title={user ? "按住 Alt 點擊可刪除" : ""}
                   className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
@@ -322,7 +328,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* 主視窗：解除鎖定高度，無內部捲動軸 */}
+      {/* 主視窗 */}
       <main className="flex flex-col lg:flex-row p-4 gap-2 print:hidden items-stretch pb-12">
         {/* 1. 簽到區 */}
         <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
@@ -351,7 +357,7 @@ const App = () => {
               }
               
               return (
-                <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`h-24 rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
+                <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
                   <span className="text-5xl font-black">{maskName(s.name)}</span>
                   {d?.checkinTime && <span className={`text-2xl font-black mt-1 ${attStat === 'late' ? 'text-pink-700' : (attStat === 'on-time' ? 'text-emerald-500' : '')}`}>{textStatus}</span>}
                 </button>
@@ -379,9 +385,9 @@ const App = () => {
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               return (
-                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`h-12 flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
+                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`min-h-[48px] flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
                   <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
-                  <div className="flex-1 h-4 bg-blue-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-blue-500' : 'bg-sky-400'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
+                  <div className="flex-1 h-4 bg-blue-100/50 rounded-full mx-4 overflow-hidden shadow-inner"><div className={`h-full transition-all duration-700 ${isFull ? 'bg-blue-500' : 'bg-blue-400'}`} style={{ width: `${total > 0 ? (comp / total) * 100 : 0}%` }}></div></div>
                   <span className={`text-3xl font-black w-20 text-right ${isFull ? 'text-blue-700' : 'text-slate-500'}`}>{comp}/{total}</span>
                 </div>
               );
@@ -444,7 +450,7 @@ const App = () => {
           <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> {activeStatMonth} 分析報表</h3>
           <div className="flex gap-4 items-center">
             <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-sky-50 border-2 border-sky-200 text-sky-700 rounded-2xl px-6 py-2 font-black text-2xl outline-none shadow-sm cursor-pointer hover:bg-sky-100 transition-colors">
-              {["2月", "3月", "4月", "5月", "6月", "7月"].map(m => <option key={m} value={m}>{m} 統計</option>)}
+              {["1月", "2月", "3月", "4月", "5月", "6月"].map(m => <option key={m} value={m}>{m} 統計</option>)}
             </select>
             {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
@@ -486,7 +492,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* 彈窗系統 (Live Sync) */}
+      {/* 彈窗系統 (全面導入 Unified Engine 確保資料同步) */}
       {(activeStudent || viewOnlyStudent) && (() => {
         const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
         const liveMonthData = monthlyStats[targetId];
@@ -506,17 +512,18 @@ const App = () => {
             
             <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
               {viewOnlyStudent?.isHistory ? (
-                <div className="space-y-4">
+                // 資訊高密度版歷史彈窗 (間距縮小、字體不變)
+                <div className="space-y-3">
                   {liveMonthData && Object.entries(liveMonthData.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (
-                    <div key={date} className="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-5">
-                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-4">
+                    <div key={date} className="p-4 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-3 shadow-sm">
+                      <div className="flex items-center justify-between border-b-2 border-slate-200 pb-2">
                         <span className="text-4xl font-black text-sky-800">{date}</span>
                         {getStatusDisplay(rec.att, 'att')}
                       </div>
-                      <div className="flex gap-3 flex-wrap pt-2">
+                      <div className="flex gap-2 flex-wrap pt-1">
                         {rec.allDone && <span className="text-3xl font-black text-blue-600 flex items-center gap-2"><CheckCircle2 size={32}/> 任務齊全</span>}
-                        {rec.missingList.map(m => <span key={`m-${m}`} className="px-5 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-2xl font-bold shadow-sm">{m} (缺交)</span>)}
-                        {rec.lateList.map(l => <span key={`l-${l}`} className="px-5 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-2xl font-bold shadow-sm">{l} (遲交)</span>)}
+                        {rec.missingList.map(m => <span key={`m-${m}`} className="px-4 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-2xl font-bold shadow-sm">{m} (缺交)</span>)}
+                        {rec.lateList.map(l => <span key={`l-${l}`} className="px-4 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-2xl font-bold shadow-sm">{l} (遲交)</span>)}
                       </div>
                     </div>
                   ))}
@@ -561,23 +568,30 @@ const App = () => {
                       </label>
                     )
                   }) : (
+                    // 關鍵修正：對接 Unified Engine，老師一改這裡的紅單會瞬間消失！
                     <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
-                      {prevTasks.length > 0 && prevTasks.every(t => viewOnlyStudent.tasks[t] || viewOnlyStudent.tasks[t.trim()]) ? (
-                        <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
-                          <Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" />
-                          <p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-6 w-full px-4">
-                          <div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4">
-                            <XOctagon size={48} className="text-red-600" />
-                            <p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p>
+                      {(() => {
+                        const d = attendance[targetId];
+                        const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, t, d) === 'missing');
+                        const isAllDone = missingTasks.length === 0 && prevTasks.length > 0;
+
+                        return isAllDone ? (
+                          <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
+                            <Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" />
+                            <p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p>
                           </div>
-                          {prevTasks.filter(t => !viewOnlyStudent.tasks[t] && !viewOnlyStudent.tasks[t.trim()]).map((t, idx) => (
-                            <div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{t.trim()}</span></div>
-                          ))}
-                        </div>
-                      )}
+                        ) : (
+                          <div className="grid grid-cols-3 gap-6 w-full px-4">
+                            <div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4">
+                              <XOctagon size={48} className="text-red-600" />
+                              <p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p>
+                            </div>
+                            {missingTasks.map((t, idx) => (
+                              <div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{t.trim()}</span></div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
