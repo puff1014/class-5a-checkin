@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor } from 'lucide-react';
 
-const APP_VERSION = "V21.0.260224_Navigation_Fixed_No_Deletions";
+const APP_VERSION = "V21.2.260225_BiauKai_And_Print_Fix";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -36,13 +36,9 @@ const App = () => {
  const [w1, setW1] = useState(25);
  const [w2, setW2] = useState(25);
  const [refreshCounter, setRefreshCounter] = useState(0);
-  
-  // 修改導航：快選月曆專用顯示日期
  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
  const [pickerDate, setPickerDate] = useState(new Date());
 
-  // 螢光筆色系
- const [highlighters, setHighlighters] = useState({});
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
  const cycleHighlighter = (index) => {
@@ -69,8 +65,6 @@ const App = () => {
  useEffect(() => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
-    
-   // 修復選單：移除會強制同步選單月份的邏輯，讓下拉選單可獨立切換
    onSnapshot(doc(db, "announcements", dateKey), (snap) => {
      const items = snap.exists() ? snap.data().items || [] : [];
      setDisplayItems(items);
@@ -275,7 +269,6 @@ else {
                  {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '教師模式' : '學生模式'}
                </button>
              </div>
-             {/* 修改 1：佳句樣式優化 */}
              <p className="text-2xl font-normal text-sky-600/80 mt-2 tracking-[1.25em] font-serif italic whitespace-nowrap">學海無涯勤是岸</p>
            </div>
          </div>
@@ -358,11 +351,10 @@ else {
              const d = attendance[s.id];
              const attStat = getFinalAttStatus(s.id, d);
              let color = 'bg-slate-50 text-slate-300 border-slate-100';
-             if (!isPublished) { color = 'bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed'; }
-             else if (attStat === 'on-time') { color = 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm'; }
-             else if (attStat === 'late') { color = 'bg-pink-50 text-pink-600 border-pink-200 shadow-sm'; }
+             if (attStat === 'on-time') color = 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm';
+             else if (attStat === 'late') color = 'bg-pink-50 text-pink-600 border-pink-200 shadow-sm';
              return (
-               <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
+               <button key={s.id} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
                  <span className="text-5xl font-black">{maskName(s.name)}</span>
                </button>
              );
@@ -382,10 +374,7 @@ else {
              const total = prevTasks.length;
              const isFull = comp === total && total > 0;
              const progress = total > 0 ? (comp / total) * 100 : 0;
-             
-             // 修改 2：進度條上岸配色
              const barColor = isFull ? 'bg-[#E6BE8A]' : 'bg-[#0077BE]';
-
              return (
                <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`min-h-[48px] flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-orange-50 border-orange-100 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
                  <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
@@ -426,22 +415,11 @@ else {
            {isEditing ? (
              <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
            ) : (
-             <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight }} className="font-black">
+             <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className={useBiauKai ? 'font-normal tracking-wide' : 'font-black'}>
                {displayItems.map((item, i) => (
                  <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all">
                    <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-black">{i+1}</span>
-                   {/* 修改 3：深色礦物螢光筆互動區 */}
-                   <span 
-                     onClick={() => cycleHighlighter(i)}
-                     className="cursor-pointer px-2 rounded-md transition-all duration-300"
-                     style={{ 
-                       backgroundColor: highlighterColors[highlighters[i] || 0], 
-                       color: '#FFFFFF',
-                       textShadow: highlighters[i] > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none' 
-                     }}
-                   >
-                     {item}
-                   </span>
+                   <span onClick={() => cycleHighlighter(i)} className="cursor-pointer px-2 rounded-md transition-all duration-300" style={{ backgroundColor: highlighterColors[highlighters[i] || 0], color: '#FFFFFF', textShadow: highlighters[i] > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none' }}>{item}</span>
                  </div>
                ))}
              </div>
@@ -511,11 +489,29 @@ else {
        <div className="grid grid-cols-2 gap-8">
          {STUDENTS.map(s => {
            const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-           return (<div key={s.id} className="border-2 border-black p-6 rounded-xl break-inside-avoid"><h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">{s.name} {activeStatMonth} 表現紀錄</h3><div className="space-y-2 mb-4 text-lg"><p>● <span className="font-bold">出席：</span></p><p className="pl-6 tracking-wide">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p><p className="pl-6 tracking-wide">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
-           {/* 修改 4：列印報表補上遲交與缺交天數 */}
-           <p className="mt-3">● <span className="font-bold">作業：</span></p>
-           <p className="pl-6 tracking-wide">齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</p>
-           </div><div className="text-base mt-4 border-t-2 border-slate-100 pt-4"><p className="font-bold mb-2">●需補交/補正任務明細：</p><div className="pl-4 space-y-1">{sd.issues.length > 0 ? sd.issues.map((iss, i) => <p key={i}>· {iss}</p>) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}</div></div></div>);
+           return (
+             <div key={s.id} className="border-2 border-black p-6 rounded-xl break-inside-avoid">
+               <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">{s.name} {activeStatMonth} 表現紀錄</h3>
+               <div className="space-y-2 mb-4 text-lg">
+                 <p>● <span className="font-bold">出席：</span></p>
+                 <p className="pl-6 tracking-wide">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p>
+                 <p className="pl-6 tracking-wide">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
+                 <p className="mt-3">● <span className="font-bold">作業：</span></p>
+                 {/* 修正對齊邏輯 */}
+                 <div className="pl-6 flex flex-wrap gap-x-4">
+                   <span className="whitespace-nowrap">齊全 {sd.fullDoneDays} 天 /</span>
+                   <span className="whitespace-nowrap">遲交 {sd.lateDays} 天 /</span>
+                   <span className="whitespace-nowrap font-bold">缺交 {sd.missingDays} 天</span>
+                 </div>
+               </div>
+               <div className="text-base mt-4 border-t-2 border-slate-100 pt-4">
+                 <p className="font-bold mb-2">●需補交/補正任務明細：</p>
+                 <div className="pl-4 space-y-1">
+                   {sd.issues.length > 0 ? sd.issues.map((iss, i) => <p key={i}>· {iss}</p>) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
+                 </div>
+               </div>
+             </div>
+           );
          })}
        </div>
      </div>
