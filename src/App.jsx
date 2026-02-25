@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor } from 'lucide-react';
 
-const APP_VERSION = "V21.2.260225_BiauKai_And_Print_Fix";
+const APP_VERSION = "V21.3.260225_Final_Stable_Print_Fix";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -39,6 +39,7 @@ const App = () => {
  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
  const [pickerDate, setPickerDate] = useState(new Date());
 
+ const [highlighters, setHighlighters] = useState({});
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
  const cycleHighlighter = (index) => {
@@ -46,7 +47,7 @@ const App = () => {
      ...prev,
      [index]: ((prev[index] || 0) + 1) % highlighterColors.length
    }));
-  };
+ };
 
  useEffect(() => {
    const app = initializeApp(firebaseConfig);
@@ -55,12 +56,12 @@ const App = () => {
    onAuthStateChanged(getAuth(app), (u) => setUser(u));
    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
    return () => clearInterval(timer);
-  }, []);
+ }, []);
 
  useEffect(() => {
    if (!db) return;
    onSnapshot(collection(db, "announcements"), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
-  }, [db]);
+ }, [db]);
 
  useEffect(() => {
    if (!db) return;
@@ -81,7 +82,7 @@ const App = () => {
      setPrevTasks(!snap.empty ? snap.docs[0].data().items : []);
    };
    fetchPrev();
-  }, [db, viewDate, isEditing]);
+ }, [db, viewDate, isEditing]);
 
  const getAutoAttStatus = (id, time) => {
    if (!time) return 'absent';
@@ -89,7 +90,7 @@ const App = () => {
    const totalS = h * 3600 + m * 60 + (s || 0);
    if (SPECIAL_IDS.includes(id)) return totalS >= 8 * 3600 + 10 * 60 + 30 ? 'late' : 'on-time';
    return totalS >= 7 * 3600 + 40 * 60 + 1 ? 'late' : 'on-time';
-  };
+ };
 
  const getFinalAttStatus = (id, attData) => {
    if (!attData) return 'absent';
@@ -97,7 +98,7 @@ const App = () => {
    if (attData.status === 'sick') return 'sick';
    if (attData.status === 'personal') return 'personal';
    return getAutoAttStatus(id, attData.checkinTime);
-  };
+ };
 
  const isAutoTaskLate = (id, actionTime) => {
    if (!actionTime) return false;
@@ -105,7 +106,7 @@ const App = () => {
    const totalS = h * 3600 + m * 60 + (s || 0);
    if (SPECIAL_IDS.includes(id)) return totalS > 8 * 3600 + 15 * 60;
    return totalS >= 7 * 3600 + 40 * 60 + 1;
-  };
+ };
 
  const getFinalTaskStatus = (id, originalTaskName, attData) => {
    const cleanName = originalTaskName.trim();
@@ -114,7 +115,7 @@ const App = () => {
    if (!hw[originalTaskName] && !hw[cleanName]) return 'missing';
    if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
    return 'done';
-  };
+ };
 
  useEffect(() => {
    if (!db || recordedDates.length === 0) return;
@@ -182,7 +183,7 @@ const App = () => {
    };
    fetchMonth();
    return () => { isMounted = false; };
-  }, [db, activeStatMonth, recordedDates, attendance, viewDate, refreshCounter]);
+ }, [db, activeStatMonth, recordedDates, attendance, viewDate, refreshCounter]);
 
  const cycleManualAtt = async (studentId) => {
    if (!user) return;
@@ -193,7 +194,7 @@ const App = () => {
    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualAtt: next === 'auto' ? deleteField() : next }, { merge: true });
    setRefreshCounter(prev => prev + 1);
-  };
+ };
 
  const cycleManualTask = async (studentId, taskName) => {
    if (!user) return;
@@ -209,7 +210,7 @@ const App = () => {
    else { updatedTasks[cleanT] = nextStatus; }
    await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
    setRefreshCounter(prev => prev + 1);
-  };
+ };
 
  const getStatusDisplay = (status, type) => {
    if (type === 'att') {
@@ -220,8 +221,7 @@ const App = () => {
        case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-orange-200">事假</span>;
        default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest">未簽到</span>;
      }
-    }
-else {
+   } else {
      switch(status) {
        case 'done': return <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl border-2 border-blue-300 font-bold">齊全</span>;
        case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border-2 border-amber-300 font-bold">遲交</span>;
@@ -229,8 +229,8 @@ else {
        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border-2 border-slate-400 font-bold">免交</span>;
        default: return <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-xl">未知</span>;
      }
-    }
-  };
+   }
+ };
 
  const submitCheckin = async (status = 'present') => {
    const dateKey = formatDate(viewDate);
@@ -239,7 +239,7 @@ else {
      name: activeStudent.name, status, completedTasks: selectedTasks, checkinTime: attendance[activeStudent.id]?.checkinTime || nowTime, lastActionTime: nowTime, timestamp: serverTimestamp()
    }, { merge: true });
    setActiveStudent(null);
-  };
+ };
 
  const handleDeleteDate = async (dateStr) => {
    if (!user) return;
@@ -250,8 +250,8 @@ else {
      attDocs.forEach(d => batch.delete(d.ref));
      await batch.commit();
      if (dateStr === formatDate(viewDate)) { setDisplayItems([]); setAnnouncementText(""); setAttendance({}); }
-    }
-  };
+   }
+ };
 
  const isPublished = recordedDates.includes(formatDate(viewDate));
 
@@ -289,7 +289,7 @@ else {
            <div className="w-px h-8 bg-sky-200 mx-1"></div>
            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1">
              {recordedDates.filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth)).map(d => (
-               <button key={d} onClick={(e) => { if(user && e.altKey) handleDeleteDate(d); else setViewDate(new Date(d)); }} title={user ? "按住 Alt 點擊可刪除" : ""} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
+               <button key={d} onClick={() => setViewDate(new Date(d))} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
                  {d.split('-')[2]}
                </button>
              ))}
@@ -351,11 +351,17 @@ else {
              const d = attendance[s.id];
              const attStat = getFinalAttStatus(s.id, d);
              let color = 'bg-slate-50 text-slate-300 border-slate-100';
-             if (attStat === 'on-time') color = 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm';
-             else if (attStat === 'late') color = 'bg-pink-50 text-pink-600 border-pink-200 shadow-sm';
+             let textStatus = '未簽到';
+             if (!isPublished) { color = 'bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed'; }
+             else if (attStat === 'on-time') { color = 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm'; textStatus = d?.checkinTime || '準時'; }
+             else if (attStat === 'late') { color = 'bg-pink-50 text-pink-600 border-pink-200 shadow-sm'; textStatus = d?.checkinTime || '遲到'; }
+             else if (attStat === 'sick') { color = 'bg-purple-50 text-purple-700 border-purple-100 shadow-sm'; textStatus = '病假'; }
+             else if (attStat === 'personal') { color = 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm'; textStatus = '事假'; }
+             
              return (
-               <button key={s.id} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
+               <button key={s.id} disabled={!isPublished} onClick={() => { setSelectedTasks(d?.completedTasks || {}); setActiveStudent(s); }} className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 ${color}`}>
                  <span className="text-5xl font-black">{maskName(s.name)}</span>
+                 {d?.checkinTime && <span className={`text-2xl font-black mt-1 ${attStat === 'late' ? 'text-pink-700' : (attStat === 'on-time' ? 'text-emerald-500' : '')}`}>{textStatus}</span>}
                </button>
              );
            })}
@@ -415,7 +421,7 @@ else {
            {isEditing ? (
              <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
            ) : (
-             <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className={useBiauKai ? 'font-normal tracking-wide' : 'font-black'}>
+             <div style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit', fontSize: `${fontSize}px`, lineHeight: lineHeight }} className={useBiauKai ? 'font-normal tracking-wide' : 'font-black'}>
                {displayItems.map((item, i) => (
                  <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all">
                    <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-black">{i+1}</span>
@@ -448,7 +454,7 @@ else {
                const sData = monthlyStats[s.id];
                return (
                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer group" onClick={() => sData && setViewOnlyStudent({ student: s, isHistory: true })}>
-                   <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 transition-all">{maskName(s.name)}</td>
+                   <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 group-hover:bg-sky-50/50 transition-all">{maskName(s.name)}</td>
                    <td className="p-5 border-r-2 border-sky-50"><div className="flex justify-center items-center gap-6 text-2xl font-black"><div className="flex items-center gap-2 text-emerald-600"><CheckCircle2 size={28}/> 準時: {sData ? sData.onTime : '--'}</div><div className="flex items-center gap-2 text-pink-500"><Clock size={28}/> 遲到: {sData ? sData.late : '--'}</div><div className="flex items-center gap-2 text-slate-400"><UserMinus size={28}/> 未到: {sData ? (sData.sick + sData.personal) : '--'}</div></div></td>
                    <td className="p-5"><div className="flex justify-center items-center gap-10 text-2xl font-black"><div className="flex items-center gap-2 text-blue-600"><Trophy size={32} className="text-blue-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div><div className="flex items-center gap-2 text-amber-500"><History size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div><div className="flex items-center gap-2 text-rose-500"><AlertTriangle size={32}/> 缺交: {sData ? sData.missingDays : '--'}</div></div></td>
                  </tr>
@@ -497,11 +503,10 @@ else {
                  <p className="pl-6 tracking-wide">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p>
                  <p className="pl-6 tracking-wide">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
                  <p className="mt-3">● <span className="font-bold">作業：</span></p>
-                 {/* 修正對齊邏輯 */}
                  <div className="pl-6 flex flex-wrap gap-x-4">
-                   <span className="whitespace-nowrap">齊全 {sd.fullDoneDays} 天 /</span>
-                   <span className="whitespace-nowrap">遲交 {sd.lateDays} 天 /</span>
-                   <span className="whitespace-nowrap font-bold">缺交 {sd.missingDays} 天</span>
+                   <span className="whitespace-nowrap text-xl">齊全 {sd.fullDoneDays} 天 /</span>
+                   <span className="whitespace-nowrap text-xl">遲交 {sd.lateDays} 天 /</span>
+                   <span className="whitespace-nowrap text-xl font-bold">缺交 {sd.missingDays} 天</span>
                  </div>
                </div>
                <div className="text-base mt-4 border-t-2 border-slate-100 pt-4">
@@ -516,7 +521,7 @@ else {
        </div>
      </div>
    </div>
-  );
+ );
 };
 
 export default App;
