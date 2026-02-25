@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor } from 'lucide-react';
 
-const APP_VERSION = "V21.4.260225_Print_Content_Restore";
+const APP_VERSION = "V21.5.260225_MultiColumn_Print_Test";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -289,7 +289,7 @@ const App = () => {
            <div className="w-px h-8 bg-sky-200 mx-1"></div>
            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1">
              {recordedDates.filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth)).map(d => (
-               <button key={d} onClick={() => setViewDate(new Date(d))} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
+               <button key={d} onClick={(e) => { if(user && e.altKey) handleDeleteDate(d); else setViewDate(new Date(d)); }} title={user ? "按住 Alt 點擊可刪除" : ""} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
                  {d.split('-')[2]}
                </button>
              ))}
@@ -490,29 +490,33 @@ const App = () => {
        );
      })()}
 
+     {/* 修改後的列印報表區域：單欄學生，明細多欄排列 */}
      <div className="hidden print:block p-8 bg-white text-black font-sans">
        <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
-       <div className="grid grid-cols-2 gap-8">
+       <div className="flex flex-col gap-8">
          {STUDENTS.map(s => {
            const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
            return (
              <div key={s.id} className="border-2 border-black p-6 rounded-xl break-inside-avoid">
                <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">{s.name} {activeStatMonth} 表現紀錄</h3>
-               <div className="space-y-2 mb-4 text-lg">
-                 <p>● <span className="font-bold">出席：</span></p>
-                 <p className="pl-6 tracking-wide">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p>
-                 <p className="pl-6 tracking-wide">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
-                 <p className="mt-3">● <span className="font-bold">作業：</span></p>
-                 <div className="pl-6 flex flex-wrap gap-x-4">
-                   <span className="whitespace-nowrap text-xl">齊全 {sd.fullDoneDays} 天 /</span>
-                   <span className="whitespace-nowrap text-xl">遲交 {sd.lateDays} 天 /</span>
-                   <span className="whitespace-nowrap text-xl font-bold">缺交 {sd.missingDays} 天</span>
+               <div className="grid grid-cols-2 gap-4 mb-4">
+                 <div className="space-y-1 text-lg">
+                   <p>● <span className="font-bold">出席狀況：</span></p>
+                   <p className="pl-6">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p>
+                   <p className="pl-6">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
+                 </div>
+                 <div className="space-y-1 text-lg">
+                   <p>● <span className="font-bold">作業統計：</span></p>
+                   <p className="pl-6">齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天</p>
+                   <p className="pl-6 font-bold text-xl">缺交 {sd.missingDays} 天</p>
                  </div>
                </div>
                <div className="text-base mt-4 border-t-2 border-slate-100 pt-4">
-                 <p className="font-bold mb-2">●需補交/補正任務明細：</p>
-                 <div className="pl-4 space-y-1">
-                   {sd.issues.length > 0 ? sd.issues.map((iss, i) => <p key={i}>· {iss}</p>) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
+                 <p className="font-bold mb-3">● 需補交/補正任務明細：</p>
+                 <div className="pl-4 text-sm" style={{ columnCount: 3, columnGap: '2rem', columnRule: '1px inset #eee' }}>
+                   {sd.issues.length > 0 ? sd.issues.map((iss, i) => (
+                     <div key={i} className="mb-1 break-inside-avoid whitespace-nowrap">· {iss}</div>
+                   )) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
                  </div>
                </div>
              </div>
