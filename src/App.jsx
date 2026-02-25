@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor } from 'lucide-react';
 
-const APP_VERSION = "V21.5.260225_MultiColumn_Print_Test";
+const APP_VERSION = "V21.6.260225_Print_Precision_Layout";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -143,7 +143,7 @@ const App = () => {
            if (dailyTasks.length > 0) {
               stats[sid].missingDays++;
               dailyTasks.forEach(t => {
-                stats[sid].issues.push(`${dKey.slice(5)}: ${t.trim()} (缺交)`);
+                stats[sid].issues.push(`${dKey}: ${t.trim()} (缺交)`);
                 stats[sid].dailyRecords[dKey].missingList.push(t.trim());
               });
            } else { stats[sid].dailyRecords[dKey].allDone = true; }
@@ -165,11 +165,11 @@ const App = () => {
               const finalTask = getFinalTaskStatus(sid, cleanTask, d);
               if (finalTask === 'missing') {
                 missingCount++;
-                stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (缺交)`);
+                stats[sid].issues.push(`${dKey}: ${cleanTask} (缺交)`);
                 stats[sid].dailyRecords[dKey].missingList.push(cleanTask);
               } else if (finalTask === 'late') {
                 lateCount++;
-                stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (遲交)`);
+                stats[sid].issues.push(`${dKey}: ${cleanTask} (遲交)`);
                 stats[sid].dailyRecords[dKey].lateList.push(cleanTask);
               }
            });
@@ -289,7 +289,7 @@ const App = () => {
            <div className="w-px h-8 bg-sky-200 mx-1"></div>
            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1">
              {recordedDates.filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth)).map(d => (
-               <button key={d} onClick={(e) => { if(user && e.altKey) handleDeleteDate(d); else setViewDate(new Date(d)); }} title={user ? "按住 Alt 點擊可刪除" : ""} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
+               <button key={d} onClick={() => setViewDate(new Date(d))} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
                  {d.split('-')[2]}
                </button>
              ))}
@@ -382,7 +382,7 @@ const App = () => {
              const progress = total > 0 ? (comp / total) * 100 : 0;
              const barColor = isFull ? 'bg-[#E6BE8A]' : 'bg-[#0077BE]';
              return (
-               <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`min-h-[48px] flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-orange-50 border-orange-100 shadow-sm' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-100'}`}>
+               <div key={s.id} onClick={() => setViewOnlyStudent({ student: s, tasks: hw })} className={`min-h-[48px] flex items-center px-4 rounded-[1.2rem] border transition-all cursor-pointer ${isFull ? 'bg-orange-50 border-orange-100 shadow-sm' : 'bg-slate-50 border-slate-200'}`}>
                  <span className="text-3xl font-black text-sky-900 w-28 truncate">{maskName(s.name)}</span>
                  <div className="flex-1 h-7 bg-slate-200 rounded-full mx-4 relative overflow-hidden shadow-inner border border-slate-100">
                    <div className={`h-full transition-all duration-1000 ease-out relative ${barColor}`} style={{ width: `${progress}%` }}>
@@ -454,7 +454,7 @@ const App = () => {
                const sData = monthlyStats[s.id];
                return (
                  <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer group" onClick={() => sData && setViewOnlyStudent({ student: s, isHistory: true })}>
-                   <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 transition-all">{maskName(s.name)}</td>
+                   <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 group-hover:bg-sky-50/50 transition-all">{maskName(s.name)}</td>
                    <td className="p-5 border-r-2 border-sky-50"><div className="flex justify-center items-center gap-6 text-2xl font-black"><div className="flex items-center gap-2 text-emerald-600"><CheckCircle2 size={28}/> 準時: {sData ? sData.onTime : '--'}</div><div className="flex items-center gap-2 text-pink-500"><Clock size={28}/> 遲到: {sData ? sData.late : '--'}</div><div className="flex items-center gap-2 text-slate-400"><UserMinus size={28}/> 未到: {sData ? (sData.sick + sData.personal) : '--'}</div></div></td>
                    <td className="p-5"><div className="flex justify-center items-center gap-10 text-2xl font-black"><div className="flex items-center gap-2 text-blue-600"><Trophy size={32} className="text-blue-500"/> 齊全: {sData ? sData.fullDoneDays : '--'}</div><div className="flex items-center gap-2 text-amber-500"><History size={32}/> 遲交: {sData ? sData.lateDays : '--'}</div><div className="flex items-center gap-2 text-rose-500"><AlertTriangle size={32}/> 缺交: {sData ? sData.missingDays : '--'}</div></div></td>
                  </tr>
@@ -490,32 +490,37 @@ const App = () => {
        );
      })()}
 
-     {/* 修改後的列印報表區域：單欄學生，明細多欄排列 */}
-     <div className="hidden print:block p-8 bg-white text-black font-sans">
-       <h1 className="text-center text-4xl font-bold mb-8 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
-       <div className="flex flex-col gap-8">
+     {/* 修正後的列印區域：單欄學生，明細多欄且日期格式優化 */}
+     <div className="hidden print:block p-4 bg-white text-black font-sans">
+       <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
+       <div className="flex flex-col gap-6">
          {STUDENTS.map(s => {
            const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+           // 縮短日期格式：從 2026-02-26 轉為 2/26
+           const shortIssues = sd.issues.map(iss => iss.replace(/^\d{4}-(\d{2})-(\d{2})/, (m, month, day) => `${parseInt(month)}/${parseInt(day)}`));
+
            return (
-             <div key={s.id} className="border-2 border-black p-6 rounded-xl break-inside-avoid">
-               <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">{s.name} {activeStatMonth} 表現紀錄</h3>
+             <div key={s.id} className="border-2 border-black p-5 rounded-xl break-inside-avoid">
+               <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">
+                 {s.name} {activeStatMonth} 學習表現紀錄
+               </h3>
                <div className="grid grid-cols-2 gap-4 mb-4">
-                 <div className="space-y-1 text-lg">
-                   <p>● <span className="font-bold">出席狀況：</span></p>
-                   <p className="pl-6">準時 {sd.onTime} 天 / 遲到 {sd.late} 天</p>
-                   <p className="pl-6">病假 {sd.sick} 天 / 事假 {sd.personal} 天</p>
+                 <div className="space-y-1 text-lg border-r border-slate-200">
+                   <p className="font-bold">● 出席狀況：</p>
+                   <p className="pl-6">準時 {sd.onTime} / 遲到 {sd.late} / 缺席 {sd.sick + sd.personal}</p>
                  </div>
-                 <div className="space-y-1 text-lg">
-                   <p>● <span className="font-bold">作業統計：</span></p>
-                   <p className="pl-6">齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天</p>
-                   <p className="pl-6 font-bold text-xl">缺交 {sd.missingDays} 天</p>
+                 <div className="space-y-1 text-lg pl-4">
+                   <p className="font-bold">● 作業統計：</p>
+                   <p className="pl-6 whitespace-nowrap">齊全 {sd.fullDoneDays} / 遲交 {sd.lateDays} / <span className="font-bold">缺交 {sd.missingDays}</span></p>
                  </div>
                </div>
-               <div className="text-base mt-4 border-t-2 border-slate-100 pt-4">
-                 <p className="font-bold mb-3">● 需補交/補正任務明細：</p>
-                 <div className="pl-4 text-sm" style={{ columnCount: 3, columnGap: '2rem', columnRule: '1px inset #eee' }}>
-                   {sd.issues.length > 0 ? sd.issues.map((iss, i) => (
-                     <div key={i} className="mb-1 break-inside-avoid whitespace-nowrap">· {iss}</div>
+               <div className="text-base mt-2 border-t border-slate-200 pt-3">
+                 <p className="font-bold mb-2">● 需補交/補正任務明細：</p>
+                 <div className="pl-2 text-[13px] leading-relaxed" style={{ columnWidth: '180px', columnGap: '1.5rem', columnRule: '1px dashed #ccc' }}>
+                   {shortIssues.length > 0 ? shortIssues.map((iss, i) => (
+                     <div key={i} className="mb-0.5 break-inside-avoid flex items-start">
+                       <span className="mr-1">·</span><span>{iss}</span>
+                     </div>
                    )) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
                  </div>
                </div>
