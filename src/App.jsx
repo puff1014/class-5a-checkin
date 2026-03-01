@@ -42,12 +42,18 @@ const App = () => {
  const [highlighters, setHighlighters] = useState({});
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
- const cycleHighlighter = (index) => {
-   setHighlighters(prev => ({
-     ...prev,
-     [index]: ((prev[index] || 0) + 1) % highlighterColors.length
-   }));
- };
+// 修正：底色連動並存入資料庫
+  const cycleHighlighter = async (index) => {
+    if (!user) return;
+    const dateKey = formatDate(viewDate);
+    const newItems = [...displayItems];
+    const item = newItems[index];
+    const text = typeof item === 'string' ? item : item.text;
+    const colorIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
+    const nextIdx = (colorIdx + 1) % highlighterColors.length;
+    newItems[index] = { text, colorIdx: nextIdx };
+    await setDoc(doc(db, "announcements", dateKey), { items: newItems }, { merge: true });
+  };
 
  useEffect(() => {
    const app = initializeApp(firebaseConfig);
@@ -66,11 +72,14 @@ const App = () => {
  useEffect(() => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
-   onSnapshot(doc(db, "announcements", dateKey), (snap) => {
-     const items = snap.exists() ? snap.data().items || [] : [];
-     setDisplayItems(items);
-     if (!isEditing) setAnnouncementText(items.join('\n'));
-   });
+  onSnapshot(doc(db, "announcements", dateKey), (snap) => {
+      const items = snap.exists() ? snap.data().items || [] : [];
+      setDisplayItems(items);
+      // 關鍵：確保編輯時顯示的是純文字，而非物件格式
+      if (!isEditing) {
+        setAnnouncementText(items.map(i => typeof i === 'string' ? i : i.text).join('\n'));
+      }
+    });
    onSnapshot(collection(db, `attendance_${dateKey}`), (snap) => {
      const data = {};
      snap.forEach(d => data[d.id] = d.data());
@@ -256,7 +265,7 @@ const App = () => {
  const isPublished = recordedDates.includes(formatDate(viewDate));
 
  return (
-   <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-none overflow-x-hidden">
+   <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
      <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
        <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
          <div className="flex items-center gap-6">
@@ -422,12 +431,33 @@ const App = () => {
              <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
            ) : (
              <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="font-black">
-               {displayItems.map((item, i) => (
-                 <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all">
-                   <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-black">{i+1}</span>
-                   <span onClick={() => cycleHighlighter(i)} className="cursor-pointer px-2 rounded-md transition-all duration-300" style={{ backgroundColor: highlighterColors[highlighters[i] || 0], color: '#FFFFFF', textShadow: highlighters[i] > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none' }}>{item}</span>
-                 </div>
-               ))}
+               {displayItems.map((item, i) => {
+                  const text = typeof item === 'string' ? item : item.text;
+                  const cIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
+                  // 偵測是否以 ※ 開頭，若是則隱藏序號
+                  const hideNumber = text.startsWith('※');
+                  return (
+                    <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
+                      {!hideNumber && (
+                        <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
+                          {i+1}
+                        </span>
+                      )}
+                      <span 
+                        onClick={() => cycleHighlighter(i)} 
+                        className={`cursor-pointer px-2 rounded-md transition-all duration-300 ${hideNumber ? 'ml-20' : ''}`} 
+                        style={{ 
+                          backgroundColor: highlighterColors[cIdx], 
+                          color: '#FFFFFF', 
+                          textShadow: cIdx > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none',
+                          fontWeight: useBiauKai ? '400' : '900' // 標楷體強制不加粗，一般字體維持極粗
+                        }}
+                      >
+                        {text}
+                      </span>
+                    </div>
+                  );
+                })}
              </div>
            )}
          </div>
