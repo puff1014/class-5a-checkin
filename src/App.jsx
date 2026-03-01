@@ -431,35 +431,48 @@ const App = () => {
              <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
            ) : (
              <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="font-black">
-               {displayItems.map((item, i) => {
-                  const text = typeof item === 'string' ? item : item.text;
-                  const cIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
-                  // 偵測是否以 ※ 開頭，若是則隱藏序號
-                  const hideNumber = text.startsWith('※');
-                  return (
-                    <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
-                      {!hideNumber && (
-                        <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
-                          {i+1}
+               {(() => {
+                  let taskCounter = 0; // 初始化有效計數器
+                  return displayItems.map((item, i) => {
+                    const text = typeof item === 'string' ? item : item.text;
+                    const cIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
+                    
+                    // 偵測「※」開頭 OR 「空格」開頭，判定為備註 (Note)
+                    const isNote = text.startsWith('※') || text.startsWith(' ');
+                    
+                    // 如果不是備註，數字編號才增加
+                    if (!isNote) taskCounter++;
+
+                    return (
+                      <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
+                        {/* 只有在非備註時，才顯示黃色序號圓圈 */}
+                        {!isNote ? (
+                          <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
+                            {taskCounter}
+                          </span>
+                        ) : null}
+                        
+                        <span 
+                          onClick={() => cycleHighlighter(i)} 
+                          className="cursor-pointer px-2 rounded-md transition-all duration-300" 
+                          style={{ 
+                            backgroundColor: highlighterColors[cIdx], 
+                            color: '#FFFFFF', 
+                            textShadow: cIdx > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none',
+                            fontWeight: useBiauKai ? '400' : '900',
+                            // 備註行不縮排，marginLeft 設為 0
+                            marginLeft: isNote ? '0' : '0' 
+                          }}
+                        >
+                          {/* 顯示時移除開頭空格，保持畫面整潔 */}
+                          {text.trim()}
                         </span>
-                      )}
-                      <span 
-                        onClick={() => cycleHighlighter(i)} 
-                        className={`cursor-pointer px-2 rounded-md transition-all duration-300 ${hideNumber ? 'ml-20' : ''}`} 
-                        style={{ 
-                          backgroundColor: highlighterColors[cIdx], 
-                          color: '#FFFFFF', 
-                          textShadow: cIdx > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none',
-                          fontWeight: useBiauKai ? '400' : '900' // 標楷體強制不加粗，一般字體維持極粗
-                        }}
-                      >
-                        {text}
-                      </span>
-                    </div>
-                  );
-                })}
-             </div>
-           )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
          </div>
        </div>
      </main>
@@ -514,7 +527,48 @@ const App = () => {
                  <div className="grid grid-cols-3 gap-6">{activeStudent ? prevTasks.map((t, idx) => { const cleanT = t.trim(); return (<label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] || selectedTasks[t] ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}><input type="checkbox" checked={!!(selectedTasks[cleanT] || selectedTasks[t])} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-blue-600 cursor-pointer" /><span className="text-4xl font-black leading-tight">{cleanT}</span></label>)}) : (<div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">{(() => { const d = attendance[targetId]; const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, t, d) === 'missing'); const isAllDone = missingTasks.length === 0 && prevTasks.length > 0; return isAllDone ? (<div className="flex flex-col items-center gap-6 animate-fade-in my-auto"><Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" /><p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p></div>) : (<div className="grid grid-cols-3 gap-6 w-full px-4"><div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4"><XOctagon size={48} className="text-red-600" /><p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p></div>{missingTasks.map((t, idx) => (<div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{t.trim()}</span></div>))}</div>); })()}</div>)}</div>
                )}
              </div>
-             {activeStudent && (<div className="grid grid-cols-3 gap-6 shrink-0 h-28 mt-8 border-t-4 border-slate-50 pt-8"><button onClick={() => submitCheckin('present')} className="bg-sky-500 text-white rounded-[2rem] text-4xl font-black shadow-xl hover:bg-sky-600 transition-all active:scale-95">確認打卡</button><button onClick={() => submitCheckin('sick')} className="bg-purple-400 text-white rounded-[2rem] text-4xl font-black hover:bg-purple-500 transition-all shadow-md active:scale-95">病假</button><button onClick={() => submitCheckin('personal')} className="bg-orange-400 text-white rounded-[2rem] text-4xl font-black hover:bg-orange-500 transition-all shadow-md active:scale-95">事假</button></div>)}
+             {activeStudent && (() => {
+               // 判斷是否已達開放時間（目標日期 07:00）
+               const targetDateStr = formatDate(viewDate); // 標籤日期 e.g., "2024-03-02"
+               const openDateTime = new Date(`${targetDateStr}T07:00:00`);
+               const isExpired = currentTime >= openDateTime;
+               const canCheckIn = user || isExpired; // 教師模式不受限，學生模式需過 07:00
+
+               return (
+                 <div className="mt-8 border-t-4 border-slate-50 pt-8 shrink-0">
+                   {!canCheckIn && (
+                     <div className="text-center mb-4 animate-bounce">
+                       <span className="text-2xl font-black text-rose-500 bg-rose-50 px-6 py-2 rounded-full border-2 border-rose-200">
+                         🚢 航道尚未開放：請於 {targetDateStr} 07:00 後再簽到
+                       </span>
+                     </div>
+                   )}
+                   <div className="grid grid-cols-3 gap-6 h-28">
+                     <button 
+                       disabled={!canCheckIn}
+                       onClick={() => submitCheckin('present')} 
+                       className={`${canCheckIn ? 'bg-sky-500 hover:bg-sky-600 shadow-xl active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                     >
+                       確認打卡
+                     </button>
+                     <button 
+                       disabled={!canCheckIn}
+                       onClick={() => submitCheckin('sick')} 
+                       className={`${canCheckIn ? 'bg-purple-400 hover:bg-purple-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                     >
+                       病假
+                     </button>
+                     <button 
+                       disabled={!canCheckIn}
+                       onClick={() => submitCheckin('personal')} 
+                       className={`${canCheckIn ? 'bg-orange-400 hover:bg-orange-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                     >
+                       事假
+                     </button>
+                   </div>
+                 </div>
+               );
+             })()}
            </div>
          </div>
        );
