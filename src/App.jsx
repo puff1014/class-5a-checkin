@@ -652,10 +652,14 @@ const App = () => {
             const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
             const shortIssues = sd.issues.map(iss => iss.replace(/^\d{4}-(\d{2})-(\d{2})/, (m, month, day) => `${parseInt(month)}/${parseInt(day)}`));
 
+            {/* 解析出用於報表標題的動態日期文字 */}
+            const startStr = `${parseInt(reportStart.split('-')[1])}月${parseInt(reportStart.split('-')[2])}日`;
+            const endStr = `${parseInt(reportEnd.split('-')[1])}月${parseInt(reportEnd.split('-')[2])}日`;
+
             return (
               <div key={s.id} className="border-2 border-black p-5 rounded-xl break-inside-avoid">
                 <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">
-                  {s.name} 區間學習表現紀錄
+                  {s.name} {startStr}到{endStr} 學習表現
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="space-y-1 text-lg border-r border-slate-200">
