@@ -73,36 +73,34 @@ const App = () => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
   onSnapshot(doc(db, "announcements", dateKey), (snap) => {
-      // 核心修正：判斷 snap.exists()。如果日期是新的，給予預設的空陣列
       const data = snap.exists() ? snap.data() : { items: [] };
       const rawItems = data.items || [];
       
-      // 確保每一項都是物件格式，防止渲染時對 undefined 執行動作
       const normalizedItems = rawItems.map(item => {
         if (typeof item === 'string') return { text: item, colorIdx: 0 };
         return item || { text: "", colorIdx: 0 };
       });
 
       setDisplayItems(normalizedItems);
-      
       if (!isEditing) {
-        // 將物件轉回純文字供編輯框顯示
         setAnnouncementText(normalizedItems.map(i => i.text).join('\n'));
       }
     });
-   onSnapshot(collection(db, `attendance_${dateKey}`), (snap) => {
-     const data = {};
-     snap.forEach(d => data[d.id] = d.data());
-     setAttendance(data);
-   });
-   const fetchPrev = async () => {
-     const q = query(collection(db, "announcements"), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
-     const snap = await getDocs(q);
-     setPrevTasks(!snap.empty ? snap.docs[0].data().items : []);
-   };
-   fetchPrev();
- }, [db, viewDate, isEditing]);
 
+    onSnapshot(collection(db, `attendance_${dateKey}`), (snap) => {
+      const data = {};
+      snap.forEach(d => data[d.id] = d.data());
+      setAttendance(data);
+    });
+
+    const fetchPrev = async () => {
+      const q = query(collection(db, "announcements"), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
+      const snap = await getDocs(q);
+      setPrevTasks(!snap.empty ? snap.docs[0].data().items : []);
+    };
+    fetchPrev(); // 確保這行在這裡
+  }, [db, viewDate, isEditing]); // 這是 useEffect 的結尾
+ 
  const getAutoAttStatus = (id, time) => {
    if (!time) return 'absent';
    const [h, m, s] = time.split(':').map(Number);
