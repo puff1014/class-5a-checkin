@@ -73,11 +73,11 @@ const App = () => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
   onSnapshot(doc(db, "announcements", dateKey), (snap) => {
-      // 核心修正：加入邏輯判定，確保 data 永遠存在
+      // 核心修正：判斷 snap.exists()。如果日期是新的，給予預設的空陣列
       const data = snap.exists() ? snap.data() : { items: [] };
       const rawItems = data.items || [];
       
-      // 確保傳給 displayItems 的每一項都是物件格式，避免後續渲染出錯
+      // 確保每一項都是物件格式，防止渲染時對 undefined 執行動作
       const normalizedItems = rawItems.map(item => {
         if (typeof item === 'string') return { text: item, colorIdx: 0 };
         return item || { text: "", colorIdx: 0 };
@@ -86,7 +86,7 @@ const App = () => {
       setDisplayItems(normalizedItems);
       
       if (!isEditing) {
-        // 編輯框顯示純文字
+        // 將物件轉回純文字供編輯框顯示
         setAnnouncementText(normalizedItems.map(i => i.text).join('\n'));
       }
     });
