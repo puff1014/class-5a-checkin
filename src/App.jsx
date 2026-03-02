@@ -407,7 +407,7 @@ const App = () => {
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const hw = d?.completedTasks || {};
-              const comp = prevTasks.filter(t => getFinalTaskStatus(s.id, t.trim(), d) === 'done' || getFinalTaskStatus(s.id, t.trim(), d) === 'late').length;
+              const comp = prevTasks.filter(t => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); return getFinalTaskStatus(s.id, cleanT, d) === 'done' || getFinalTaskStatus(s.id, cleanT, d) === 'late'; }).length;
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               const progress = total > 0 ? (comp / total) * 100 : 0;
