@@ -73,11 +73,20 @@ const App = () => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
   onSnapshot(doc(db, "announcements", dateKey), (snap) => {
-      const items = snap.exists() ? snap.data().items || [] : [];
+      // 核心修正：加入邏輯判定，若資料不存在或 items 為空，則給予空陣列以免崩潰
+      const data = snap.exists() ? snap.data() : {};
+      const items = data.items || [];
+      
       setDisplayItems(items);
-      // 關鍵：確保編輯時顯示的是純文字，而非物件格式
+      
       if (!isEditing) {
-        setAnnouncementText(items.map(i => typeof i === 'string' ? i : i.text).join('\n'));
+        // 確保編輯框在讀取到新日期時，能正確處理物件或純文字格式
+        setAnnouncementText(
+          items.map(i => {
+            if (!i) return "";
+            return typeof i === 'string' ? i : (i.text || "");
+          }).join('\n')
+        );
       }
     });
    onSnapshot(collection(db, `attendance_${dateKey}`), (snap) => {
