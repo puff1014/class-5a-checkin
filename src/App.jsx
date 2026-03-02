@@ -316,10 +316,18 @@ const App = () => {
                 onClick={async () => {
                   if (!user || !db) return;
                   const dateKey = formatDate(viewDate);
+                  
+                  // 修正：新增日期後立即更新本地列表，防止導航出現空白視圖
+                  if (!recordedDates.includes(dateKey)) {
+                    setRecordedDates(prev => [...prev, dateKey].sort());
+                  }
+
                   await setDoc(doc(db, "announcements", dateKey), {
                     date: dateKey,
                     items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }]
                   }, { merge: true });
+                  
+                  setViewDate(new Date(viewDate));
                   setIsEditing(false); 
                 }} 
                 className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" 
