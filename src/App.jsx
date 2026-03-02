@@ -94,7 +94,17 @@ const App = () => {
     const fetchPrev = async () => {
       const q = query(collection(db, "announcements"), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
       const snap = await getDocs(q);
-      setPrevTasks(!snap.empty ? snap.docs[0].data().items : []);
+      if (!snap.empty) {
+        const rawItems = snap.docs[0].data().items || [];
+        // 過濾掉 ※ 或空格開頭的項目
+        const filteredTasks = rawItems.filter(t => {
+          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
+          return !text.startsWith('※') && !text.startsWith(' ');
+        });
+        setPrevTasks(filteredTasks);
+      } else {
+        setPrevTasks([]);
+      }
     };
     fetchPrev();
   }, [db, viewDate, isEditing]);
@@ -144,7 +154,12 @@ const App = () => {
        const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
        const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
        const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
-       const dailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
+       const rawDailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
+       // 過濾掉 ※ 或空格開頭的項目
+       const dailyTasks = rawDailyTasks.filter(t => {
+         const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
+         return !text.startsWith('※') && !text.startsWith(' ');
+       });
        const isCurrentView = dKey === formatDate(viewDate);
        STUDENTS.forEach(student => {
          const sid = student.id; const d = (isCurrentView && attendance[sid]) ? attendance[sid] : attMap[sid];
@@ -634,11 +649,11 @@ const App = () => {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="space-y-1 text-lg border-r border-slate-200">
                     <p className="font-bold">● 出席狀況：</p>
-                    <p className="pl-6">準時 {sd.onTime} / 遲到 {sd.late} / 缺席 {sd.sick + sd.personal}</p>
+                    <p className="pl-6">準時 {sd.onTime}天 / 遲到 {sd.late}天 / 缺席 {sd.sick + sd.personal}天</p>
                   </div>
                   <div className="space-y-1 text-lg pl-4">
                     <p className="font-bold">● 作業統計：</p>
-                    <p className="pl-6 whitespace-nowrap">齊全 {sd.fullDoneDays} / 遲交 {sd.lateDays} / <span className="font-bold">缺交 {sd.missingDays}</span></p>
+                    <p className="pl-6 whitespace-nowrap">齊全 {sd.fullDoneDays}天 / 遲交 {sd.lateDays}天 / <span className="font-bold">缺交 {sd.missingDays}天</span></p>
                   </div>
                 </div>
                 <div className="text-base mt-2 border-t border-slate-200 pt-3">
