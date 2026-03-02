@@ -317,48 +317,40 @@ const App = () => {
            <div className="flex items-center gap-3">
              <button onClick={() => handleDeleteDate(formatDate(viewDate))} className="p-3 bg-rose-100 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="刪除當前日期"><Trash2 size={32}/></button>
              <div className="flex bg-white p-1.5 rounded-2xl items-center shadow-inner border border-sky-100">
-               <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
-               <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
-               <button onClick={async () => {
-  const nextDate = new Date(viewDate);
-  nextDate.setDate(nextDate.getDate() + 1);
-  const dateKey = formatDate(nextDate);
-  // 自動建立隔日空白資料 (merge: true 確保若已有資料不會被覆蓋)
-  await setDoc(doc(db, "announcements", dateKey), { 
-    date: dateKey, 
-    items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] 
-  }, { merge: true });
-  setViewDate(nextDate);
-}} className="p-2 hover:bg-sky-50 rounded-xl transition-all">
-  <ChevronRight size={36}/>
-</button>
-             </div>
-            <button 
-  onClick={async () => {
-    const dateKey = formatDate(viewDate);
-    // 修正：新增日期時，預設帶入一個空任務物件以防止畫面崩潰
-    await setDoc(doc(db, "announcements", dateKey), { 
-      date: dateKey, 
-      items: displayItems.length > 0 ? displayItems : [{ text: "請點擊編輯輸入任務", colorIdx: 0 }] 
-    }, { merge: true });
-  }} 
-  className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" 
-  title="新增日期"
->
-  <Plus size={32}/>
-</button>
-             <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
-           </div>
-         )}
-       </div>
+                <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
+                <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
+                <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
+              </div>
 
-       {showCalendarPicker && (
-         <div className="absolute right-8 top-full mt-2 bg-white border-4 border-sky-200 rounded-[2rem] shadow-2xl z-[200] p-6 w-80 animate-in fade-in slide-in-from-top-4">
-           <div className="flex justify-between items-center mb-6">
-             <button onClick={() => setPickerDate(new Date(pickerDate.setMonth(pickerDate.getMonth() - 1)))} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronLeft size={28}/></button>
-             <h4 className="text-2xl font-black text-sky-800">{pickerDate.getFullYear()}年 {pickerDate.getMonth() + 1}月</h4>
-             <button onClick={() => setPickerDate(new Date(pickerDate.setMonth(pickerDate.getMonth() + 1)))} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronRight size={28}/></button>
-           </div>
+             {/* + 新增按鈕：針對當前看到的日期標籤進行新增 */}
+              {/* + 新增按鈕：針對當前看到的日期標籤進行新增 */}
+              <button 
+                onClick={async () => {
+                  if (!user || !db) return;
+                  const dateKey = formatDate(viewDate);
+                  await setDoc(doc(db, "announcements", dateKey), {
+                    date: dateKey,
+                    items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }]
+                  }, { merge: true });
+                  setIsEditing(false); 
+                }} 
+                className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" 
+                title="在此日期新增任務"
+              >
+                <Plus size={32}/>
+              </button>
+
+              {/* 📅 月曆圖案按鈕：僅切換選單狀態 */}
+              <button 
+                onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} 
+                className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} 
+                title="快速找日期"
+              >
+                <CalendarDays size={32}/>
+              </button>
+            </div>
+          )}
+        </div>
            <div className="grid grid-cols-7 gap-2">
              {['日','一','二','三','四','五','六'].map(w => <div key={w} className="text-center font-bold text-slate-400 py-1">{w}</div>)}
              {(() => {
@@ -498,19 +490,27 @@ const App = () => {
              <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="font-black">
                {(() => {
                   let taskCounter = 0;
-                  // 增加安全檢查 (displayItems || [])，防止讀取不到陣列
-                  return (displayItems || []).map((item, i) => {
-                    const text = item?.text || ""; // 使用 ?. 防止讀取不到 text 時崩潰
+                  // 1. 如果完全沒資料，顯示明確的提示，防止畫面變白或空洞
+                  if (!displayItems || displayItems.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                        <Anchor size={80} className="mb-4 text-sky-200" />
+                        <p className="text-3xl font-bold text-sky-100">此日期尚未建立任務</p>
+                        {user && <p className="text-xl mt-2 text-sky-300">請確認日期後，點擊上方 + 號開始建立</p>}
+                      </div>
+                    );
+                  }
+
+                  // 2. 有資料時才進行 map 渲染
+                  return displayItems.map((item, i) => {
+                    const text = item?.text || ""; 
                     const cIdx = item?.colorIdx || 0;
-                    
-                    // 增加文字存在檢查，防止 startsWith 報錯導致白畫面
                     const isNote = text ? (text.startsWith('※') || text.startsWith(' ')) : false;
                     
                     if (!isNote && text.trim() !== "") taskCounter++;
 
                     return (
                       <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
-                        {/* 若非備註則顯示序號 */}
                         {!isNote && text.trim() !== "" ? (
                           <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
                             {taskCounter}
@@ -533,7 +533,6 @@ const App = () => {
                       </div>
                     );
                   });
-                })()}
               </div>
             )}
          </div>
