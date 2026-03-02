@@ -73,20 +73,21 @@ const App = () => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
   onSnapshot(doc(db, "announcements", dateKey), (snap) => {
-      // 核心修正：加入邏輯判定，若資料不存在或 items 為空，則給予空陣列以免崩潰
-      const data = snap.exists() ? snap.data() : {};
-      const items = data.items || [];
+      // 核心修正：加入邏輯判定，確保 data 永遠存在
+      const data = snap.exists() ? snap.data() : { items: [] };
+      const rawItems = data.items || [];
       
-      setDisplayItems(items);
+      // 確保傳給 displayItems 的每一項都是物件格式，避免後續渲染出錯
+      const normalizedItems = rawItems.map(item => {
+        if (typeof item === 'string') return { text: item, colorIdx: 0 };
+        return item || { text: "", colorIdx: 0 };
+      });
+
+      setDisplayItems(normalizedItems);
       
       if (!isEditing) {
-        // 確保編輯框在讀取到新日期時，能正確處理物件或純文字格式
-        setAnnouncementText(
-          items.map(i => {
-            if (!i) return "";
-            return typeof i === 'string' ? i : (i.text || "");
-          }).join('\n')
-        );
+        // 編輯框顯示純文字
+        setAnnouncementText(normalizedItems.map(i => i.text).join('\n'));
       }
     });
    onSnapshot(collection(db, `attendance_${dateKey}`), (snap) => {
@@ -476,20 +477,20 @@ const App = () => {
            ) : (
              <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="font-black">
                {(() => {
-                  let taskCounter = 0; // 初始化有效計數器
+                  let taskCounter = 0; // 有效任務計數器
                   return displayItems.map((item, i) => {
-                    const text = typeof item === 'string' ? item : item.text;
-                    const cIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
+                    const text = item.text || "";
+                    const cIdx = item.colorIdx || 0;
                     
-                    // 偵測「※」開頭 OR 「空格」開頭，判定為備註 (Note)
+                    // 偵測「※」開頭 OR 「空格」開頭，判定為備註
                     const isNote = text.startsWith('※') || text.startsWith(' ');
                     
-                    // 如果不是備註，數字編號才增加
+                    // 只有正式任務，數字編號才增加
                     if (!isNote) taskCounter++;
 
                     return (
                       <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
-                        {/* 只有在非備註時，才顯示黃色序號圓圈 */}
+                        {/* 若非備註則顯示序號，否則完全不顯示空間 */}
                         {!isNote ? (
                           <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
                             {taskCounter}
@@ -503,12 +504,12 @@ const App = () => {
                             backgroundColor: highlighterColors[cIdx], 
                             color: '#FFFFFF', 
                             textShadow: cIdx > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none',
+                            // 標楷體強制 400 (正常)，否則 900 (極粗)
                             fontWeight: useBiauKai ? '400' : '900',
-                            // 備註行不縮排，marginLeft 設為 0
+                            fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit',
                             marginLeft: isNote ? '0' : '0' 
                           }}
                         >
-                          {/* 顯示時移除開頭空格，保持畫面整潔 */}
                           {text.trim()}
                         </span>
                       </div>
