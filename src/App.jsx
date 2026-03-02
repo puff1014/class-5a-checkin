@@ -319,7 +319,19 @@ const App = () => {
              <div className="flex bg-white p-1.5 rounded-2xl items-center shadow-inner border border-sky-100">
                <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
                <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
-               <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
+               <button onClick={async () => {
+  const nextDate = new Date(viewDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  const dateKey = formatDate(nextDate);
+  // 自動建立隔日空白資料 (merge: true 確保若已有資料不會被覆蓋)
+  await setDoc(doc(db, "announcements", dateKey), { 
+    date: dateKey, 
+    items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] 
+  }, { merge: true });
+  setViewDate(nextDate);
+}} className="p-2 hover:bg-sky-50 rounded-xl transition-all">
+  <ChevronRight size={36}/>
+</button>
              </div>
             <button 
   onClick={async () => {
@@ -360,10 +372,20 @@ const App = () => {
                  const dKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                  const hasData = recordedDates.includes(dKey);
                  days.push(
-                   <button key={d} onClick={() => { setViewDate(new Date(dKey)); setShowCalendarPicker(false); }} className={`aspect-square rounded-xl text-lg font-bold flex flex-col items-center justify-center transition-all ${formatDate(viewDate) === dKey ? 'bg-sky-600 text-white' : hasData ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'text-slate-300 hover:bg-slate-50'}`}>
-                     {d}
-                     {hasData && <Anchor size={10} className={formatDate(viewDate) === dKey ? 'text-white' : 'text-sky-400'}/>}
-                   </button>
+                   <button key={d} onClick={async () => { 
+            if (user) {
+              // 老師點擊任何日期，若無資料則自動初始化，確保不會白畫面
+              await setDoc(doc(db, "announcements", dKey), { 
+                date: dKey, 
+                items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] 
+              }, { merge: true });
+            }
+            setViewDate(new Date(dKey)); 
+            setShowCalendarPicker(false); 
+          }} className={`aspect-square rounded-xl text-lg font-bold flex flex-col items-center justify-center transition-all ${formatDate(viewDate) === dKey ? 'bg-sky-600 text-white' : hasData ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'text-slate-300 hover:bg-slate-50'}`}>
+            {d}
+            {hasData && <Anchor size={10} className={formatDate(viewDate) === dKey ? 'text-white' : 'text-sky-400'}/>}
+          </button>
                  );
                }
                return days;
@@ -475,21 +497,21 @@ const App = () => {
            ) : (
              <div style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight, fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="font-black">
                {(() => {
-                  let taskCounter = 0; // 有效任務計數器
-                  return displayItems.map((item, i) => {
-                    const text = item.text || "";
-                    const cIdx = item.colorIdx || 0;
+                  let taskCounter = 0;
+                  // 增加安全檢查 (displayItems || [])，防止讀取不到陣列
+                  return (displayItems || []).map((item, i) => {
+                    const text = item?.text || ""; // 使用 ?. 防止讀取不到 text 時崩潰
+                    const cIdx = item?.colorIdx || 0;
                     
-                    // 偵測「※」開頭 OR 「空格」開頭，判定為備註
-                    const isNote = text.startsWith('※') || text.startsWith(' ');
+                    // 增加文字存在檢查，防止 startsWith 報錯導致白畫面
+                    const isNote = text ? (text.startsWith('※') || text.startsWith(' ')) : false;
                     
-                    // 只有正式任務，數字編號才增加
-                    if (!isNote) taskCounter++;
+                    if (!isNote && text.trim() !== "") taskCounter++;
 
                     return (
                       <div key={i} className="flex items-start gap-8 mb-4 last:mb-0 transition-all select-text">
-                        {/* 若非備註則顯示序號，否則完全不顯示空間 */}
-                        {!isNote ? (
+                        {/* 若非備註則顯示序號 */}
+                        {!isNote && text.trim() !== "" ? (
                           <span className="flex-shrink-0 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 text-2xl shadow-lg border-4 border-yellow-200 font-sans font-black">
                             {taskCounter}
                           </span>
@@ -502,10 +524,8 @@ const App = () => {
                             backgroundColor: highlighterColors[cIdx], 
                             color: '#FFFFFF', 
                             textShadow: cIdx > 0 ? '1px 1px 3px rgba(0,0,0,0.8)' : 'none',
-                            // 標楷體強制 400 (正常)，否則 900 (極粗)
                             fontWeight: useBiauKai ? '400' : '900',
-                            fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit',
-                            marginLeft: isNote ? '0' : '0' 
+                            fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit'
                           }}
                         >
                           {text.trim()}
