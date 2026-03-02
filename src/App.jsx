@@ -32,6 +32,14 @@ const App = () => {
  const [useBiauKai, setUseBiauKai] = useState(false);
  const [recordedDates, setRecordedDates] = useState([]);
  const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
+ 
+ // 新增：報表專用的自訂日期區間狀態
+ const [reportStart, setReportStart] = useState(() => {
+   const d = new Date();
+   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+ });
+ const [reportEnd, setReportEnd] = useState(() => formatDate(new Date()));
+ 
  const [monthlyStats, setMonthlyStats] = useState({});
  const [w1, setW1] = useState(25);
  const [w2, setW2] = useState(25);
@@ -145,9 +153,9 @@ const App = () => {
  useEffect(() => {
    if (!db || recordedDates.length === 0) return;
    let isMounted = true;
-   const fetchMonth = async () => {
-     const monthStr = activeStatMonth.replace('月', '').padStart(2, '0');
-     const targetDates = recordedDates.filter(d => d.split('-')[1] === monthStr);
+   const fetchStats = async () => {
+     // 修正：改用 reportStart 與 reportEnd 來過濾資料區間
+     const targetDates = recordedDates.filter(d => d >= reportStart && d <= reportEnd);
      const stats = {};
      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
      for (const dKey of targetDates) {
@@ -204,8 +212,8 @@ const App = () => {
      }
      if (isMounted) setMonthlyStats(stats);
    };
-   fetchMonth(); return () => { isMounted = false; };
- }, [db, activeStatMonth, recordedDates, attendance, viewDate, refreshCounter]);
+   fetchStats(); return () => { isMounted = false; };
+ }, [db, reportStart, reportEnd, recordedDates, attendance, viewDate, refreshCounter]);
 
  const cycleManualAtt = async (studentId) => {
    if (!user) return;
@@ -540,11 +548,14 @@ const App = () => {
 
       <section className="mx-4 mb-12 bg-white rounded-[3rem] p-8 shadow-2xl border-4 border-sky-100 flex flex-col print:hidden">
         <div className="flex justify-between items-center mb-6 px-2">
-          <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> {activeStatMonth} 分析報表</h3>
+          <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> 學習表現分析報表</h3>
           <div className="flex gap-4 items-center">
-            <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-sky-50 border-2 border-sky-200 text-sky-700 rounded-2xl px-6 py-2 font-black text-2xl outline-none shadow-sm cursor-pointer hover:bg-sky-100 transition-colors">
-              {["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"].map(m => <option key={m} value={m}>{m} 統計</option>)}
-            </select>
+            {/* 修正：升級為自訂日期區間選擇器 */}
+            <div className="flex items-center gap-2 bg-sky-50 p-2 rounded-2xl border-2 border-sky-200 shadow-sm">
+              <input type="date" value={reportStart} onChange={(e) => setReportStart(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
+              <span className="text-sky-400 font-bold">至</span>
+              <input type="date" value={reportEnd} onChange={(e) => setReportEnd(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
+            </div>
             {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
         </div>
@@ -575,7 +586,7 @@ const App = () => {
         return (
           <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
             <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
-              <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0"><h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">{maskName(activeStudent?.name || viewOnlyStudent?.student.name)} <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">{viewOnlyStudent?.isHistory ? `${activeStatMonth} 學習歷程` : `任務確認 - ${formatDate(viewDate)}`}</span></h3><button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button></div>
+              <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0"><h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">{maskName(activeStudent?.name || viewOnlyStudent?.student.name)} <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">{viewOnlyStudent?.isHistory ? `區間學習歷程` : `任務確認 - ${formatDate(viewDate)}`}</span></h3><button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button></div>
               <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
                 {viewOnlyStudent?.isHistory ? (
                   <div className="space-y-3">{liveMonthData && Object.entries(liveMonthData.dailyRecords).sort((a,b)=>b[0].localeCompare(a[0])).map(([date, rec]) => (<div key={date} className="p-4 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col gap-3 shadow-sm"><div className="flex items-center justify-between border-b-2 border-slate-200 pb-2"><span className="text-4xl font-black text-sky-800">{date}</span>{getStatusDisplay(rec.att, 'att')}</div><div className="flex gap-2 flex-wrap pt-1">{rec.allDone && <span className="text-3xl font-black text-blue-600 flex items-center gap-2"><CheckCircle2 size={32}/> 任務齊全</span>}{rec.missingList.map(m => <span key={`m-${m}`} className="px-4 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-2xl font-bold shadow-sm">{m} (缺交)</span>)}{rec.lateList.map(l => <span key={`l-${l}`} className="px-4 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-2xl font-bold shadow-sm">{l} (遲交)</span>)}</div></div>))}</div>
@@ -635,7 +646,7 @@ const App = () => {
       })()}
 
       <div className="hidden print:block p-4 bg-white text-black font-sans">
-        <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {activeStatMonth} 生活與學習表現統計表</h1>
+        <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
         <div className="flex flex-col gap-6">
           {STUDENTS.map(s => {
             const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
@@ -644,7 +655,7 @@ const App = () => {
             return (
               <div key={s.id} className="border-2 border-black p-5 rounded-xl break-inside-avoid">
                 <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">
-                  {s.name} {activeStatMonth} 學習表現紀錄
+                  {s.name} 區間學習表現紀錄
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="space-y-1 text-lg border-r border-slate-200">
