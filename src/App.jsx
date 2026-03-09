@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
-import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor } from 'lucide-react';
+import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X } from 'lucide-react';
 
 const APP_VERSION = "V21.8.260302_Stability_Fix";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
@@ -33,7 +33,6 @@ const App = () => {
  const [recordedDates, setRecordedDates] = useState([]);
  const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
  
- // 新增：報表專用的自訂日期區間狀態
  const [reportStart, setReportStart] = useState(() => {
    const d = new Date();
    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -46,6 +45,13 @@ const App = () => {
  const [refreshCounter, setRefreshCounter] = useState(0);
  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
  const [pickerDate, setPickerDate] = useState(new Date());
+
+ // 新增：登入視窗相關狀態
+ const [showLoginModal, setShowLoginModal] = useState(false);
+ const [loginEmail, setLoginEmail] = useState('');
+ const [loginPwd, setLoginPwd] = useState('');
+ const [loginError, setLoginError] = useState('');
+ const [isLoggingIn, setIsLoggingIn] = useState(false);
 
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
@@ -79,7 +85,6 @@ const App = () => {
     if (!db) return;
     const dateKey = formatDate(viewDate);
     
-    // 修正：防崩潰資料讀取邏輯
     onSnapshot(doc(db, "announcements", dateKey), (snap) => {
       const data = snap.exists() ? snap.data() : { items: [] };
       const rawItems = data.items || [];
@@ -104,7 +109,6 @@ const App = () => {
       const snap = await getDocs(q);
       if (!snap.empty) {
         const rawItems = snap.docs[0].data().items || [];
-        // 過濾掉 ※ 或空格開頭的項目
         const filteredTasks = rawItems.filter(t => {
           const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
           return !text.startsWith('※') && !text.startsWith(' ');
@@ -154,7 +158,6 @@ const App = () => {
    if (!db || recordedDates.length === 0) return;
    let isMounted = true;
    const fetchStats = async () => {
-     // 修正：改用 reportStart 與 reportEnd 來過濾資料區間
      const targetDates = recordedDates.filter(d => d >= reportStart && d <= reportEnd);
      const stats = {};
      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
@@ -163,7 +166,6 @@ const App = () => {
        const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
        const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
        const rawDailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
-       // 過濾掉 ※ 或空格開頭的項目
        const dailyTasks = rawDailyTasks.filter(t => {
          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
          return !text.startsWith('※') && !text.startsWith(' ');
@@ -283,10 +285,90 @@ const App = () => {
    }
  };
 
+ // 新增：處理登入邏輯的函式
+ const handleLogin = async (e) => {
+   e.preventDefault();
+   setIsLoggingIn(true);
+   setLoginError('');
+   try {
+     await signInWithEmailAndPassword(auth, loginEmail, loginPwd);
+     setShowLoginModal(false);
+     setLoginEmail('');
+     setLoginPwd('');
+   } catch (error) {
+     console.error("Login failed:", error);
+     setLoginError("登入失敗，請確認帳號密碼是否正確。");
+   } finally {
+     setIsLoggingIn(false);
+   }
+ };
+
  const isPublished = recordedDates.includes(formatDate(viewDate));
 
  return (
    <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
+     
+     {/* 新增：自訂登入視窗 (Modal) */}
+     {showLoginModal && (
+       <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
+         <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border-4 border-sky-100 relative animate-in zoom-in-95 duration-200">
+           <button 
+             onClick={() => setShowLoginModal(false)} 
+             className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors"
+           >
+             <X size={24} />
+           </button>
+           
+           <div className="flex flex-col items-center mb-6">
+             <div className="bg-sky-100 p-4 rounded-full mb-4">
+               <Lock size={40} className="text-sky-600" />
+             </div>
+             <h2 className="text-3xl font-black text-sky-900">教師權限驗證</h2>
+             <p className="text-slate-500 mt-2 font-medium">請輸入您的帳號與密碼以解鎖完整功能</p>
+           </div>
+
+           <form onSubmit={handleLogin} className="space-y-4">
+             <div>
+               <label className="block text-sm font-bold text-slate-700 mb-1">電子郵件</label>
+               <input 
+                 type="email" 
+                 value={loginEmail}
+                 onChange={(e) => setLoginEmail(e.target.value)}
+                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800"
+                 placeholder="teacher@example.com"
+                 required
+               />
+             </div>
+             <div>
+               <label className="block text-sm font-bold text-slate-700 mb-1">密碼</label>
+               <input 
+                 type="password" 
+                 value={loginPwd}
+                 onChange={(e) => setLoginPwd(e.target.value)}
+                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800"
+                 placeholder="••••••••"
+                 required
+               />
+             </div>
+
+             {loginError && (
+               <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-bold flex items-center gap-2">
+                 <AlertTriangle size={18} /> {loginError}
+               </div>
+             )}
+
+             <button 
+               type="submit" 
+               disabled={isLoggingIn}
+               className={`w-full py-4 rounded-xl text-xl font-black text-white transition-all transform active:scale-[0.98] ${isLoggingIn ? 'bg-sky-400 cursor-wait' : 'bg-sky-600 hover:bg-sky-700 shadow-lg hover:shadow-sky-600/30'}`}
+             >
+               {isLoggingIn ? '驗證中...' : '確認登入'}
+             </button>
+           </form>
+         </div>
+       </div>
+     )}
+
      <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
        <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
          <div className="flex items-center gap-6">
@@ -295,8 +377,12 @@ const App = () => {
              <div className="flex items-baseline gap-4">
                <h1 className="text-6xl font-black text-sky-900 leading-none">五甲航海日誌</h1>
                <span className="text-lg font-bold text-slate-300">Ver {APP_VERSION}</span>
-               <button onClick={() => user ? signOut(auth) : signInWithEmailAndPassword(auth, prompt("Email"), prompt("密碼"))} className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 ${user ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                 {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '教師模式' : '學生模式'}
+               {/* 修正：替換原生 prompt 為自訂 Modal */}
+               <button 
+                 onClick={() => user ? signOut(auth) : setShowLoginModal(true)} 
+                 className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}
+               >
+                 {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '已解鎖：教師模式' : '學生模式 (點擊登入)'}
                </button>
              </div>
              <p className="text-2xl font-normal text-sky-600/80 mt-2 tracking-[1.25em] font-serif italic whitespace-nowrap">學海無涯勤是岸</p>
@@ -319,7 +405,7 @@ const App = () => {
            <div className="w-px h-8 bg-sky-200 mx-1"></div>
            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1">
              {recordedDates.filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth)).map(d => (
-               <button key={d} onClick={() => setViewDate(new Date(d))} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
+               <button key={d} onClick={() => { setViewDate(new Date(d)); setIsEditing(false); }} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
                  {d.split('-')[2]}
                </button>
              ))}
@@ -330,9 +416,9 @@ const App = () => {
             <div className="flex items-center gap-3">
               <button onClick={() => handleDeleteDate(formatDate(viewDate))} className="p-3 bg-rose-100 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="刪除當前日期"><Trash2 size={32}/></button>
               <div className="flex bg-white p-1.5 rounded-2xl items-center shadow-inner border border-sky-100">
-                <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
+                <button onClick={() => { setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1))); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
                 <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
-                <button onClick={() => setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1)))} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
+                <button onClick={() => { setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1))); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
               </div>
               
               <button 
@@ -340,7 +426,6 @@ const App = () => {
                   if (!user || !db) return;
                   const dateKey = formatDate(viewDate);
                   
-                  // 修正：新增日期後立即更新本地列表，防止導航出現空白視圖
                   if (!recordedDates.includes(dateKey)) {
                     setRecordedDates(prev => [...prev, dateKey].sort());
                   }
@@ -384,7 +469,7 @@ const App = () => {
                   const dKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                   const hasData = recordedDates.includes(dKey);
                   days.push(
-                    <button key={d} onClick={() => { setViewDate(new Date(dKey)); setShowCalendarPicker(false); }} className={`aspect-square rounded-xl text-lg font-bold flex flex-col items-center justify-center transition-all ${formatDate(viewDate) === dKey ? 'bg-sky-600 text-white' : hasData ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'text-slate-300 hover:bg-slate-50'}`}>
+                    <button key={d} onClick={() => { setViewDate(new Date(dKey)); setShowCalendarPicker(false); setIsEditing(false); }} className={`aspect-square rounded-xl text-lg font-bold flex flex-col items-center justify-center transition-all ${formatDate(viewDate) === dKey ? 'bg-sky-600 text-white' : hasData ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'text-slate-300 hover:bg-slate-50'}`}>
                       {d}
                       {hasData && <Anchor size={10} className={formatDate(viewDate) === dKey ? 'text-white' : 'text-sky-400'}/>}
                     </button>
@@ -501,7 +586,7 @@ const App = () => {
                   fontSize: `${fontSize}px`, 
                   lineHeight: lineHeight, 
                   fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit',
-                  fontWeight: useBiauKai ? '400' : '900' // 修正：標楷體細體
+                  fontWeight: useBiauKai ? '400' : '900'
                 }} 
                 className={useBiauKai ? 'font-normal' : 'font-black'}
               >
@@ -550,7 +635,6 @@ const App = () => {
         <div className="flex justify-between items-center mb-6 px-2">
           <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> 學習表現分析報表</h3>
           <div className="flex gap-4 items-center">
-            {/* 修正：升級為自訂日期區間選擇器 */}
             <div className="flex items-center gap-2 bg-sky-50 p-2 rounded-2xl border-2 border-sky-200 shadow-sm">
               <input type="date" value={reportStart} onChange={(e) => setReportStart(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
               <span className="text-sky-400 font-bold">至</span>
@@ -601,16 +685,21 @@ const App = () => {
               </div>
               {activeStudent && (() => {
                 const targetDateStr = formatDate(viewDate);
+                const todayStr = formatDate(new Date());
+                const isToday = targetDateStr === todayStr;
+                
                 const openDateTime = new Date(`${targetDateStr}T07:00:00`);
-                const isExpired = currentTime >= openDateTime;
-                const canCheckIn = user || isExpired;
+                const closeDateTime = new Date(`${targetDateStr}T17:30:00`);
+                
+                const isWithinTimeWindow = isToday && currentTime >= openDateTime && currentTime <= closeDateTime;
+                const canCheckIn = user || isWithinTimeWindow;
 
                 return (
                   <div className="mt-8 border-t-4 border-slate-50 pt-8 shrink-0">
                     {!canCheckIn && (
                       <div className="text-center mb-4 animate-bounce">
                         <span className="text-2xl font-black text-rose-500 bg-rose-50 px-6 py-2 rounded-full border-2 border-rose-200">
-                          🚢 航道尚未開放：請於 {targetDateStr} 07:00 後再簽到
+                          {!isToday ? "⏳ 歷史航程已鎖定，僅供查閱" : "🚢 航道未開放：請於當日 07:00 至 17:30 之間簽到"}
                         </span>
                       </div>
                     )}
@@ -618,21 +707,21 @@ const App = () => {
                       <button 
                         disabled={!canCheckIn}
                         onClick={() => submitCheckin('present')} 
-                        className={`${canCheckIn ? 'bg-sky-500 hover:bg-sky-600 shadow-xl active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                        className={`${canCheckIn ? 'bg-sky-500 hover:bg-sky-600 shadow-xl active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
                       >
                         確認打卡
                       </button>
                       <button 
                         disabled={!canCheckIn}
                         onClick={() => submitCheckin('sick')} 
-                        className={`${canCheckIn ? 'bg-purple-400 hover:bg-purple-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                        className={`${canCheckIn ? 'bg-purple-400 hover:bg-purple-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
                       >
                         病假
                       </button>
                       <button 
                         disabled={!canCheckIn}
                         onClick={() => submitCheckin('personal')} 
-                        className={`${canCheckIn ? 'bg-orange-400 hover:bg-orange-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed'} text-white rounded-[2rem] text-4xl font-black transition-all`}
+                        className={`${canCheckIn ? 'bg-orange-400 hover:bg-orange-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
                       >
                         事假
                       </button>
@@ -651,10 +740,8 @@ const App = () => {
           {STUDENTS.map(s => {
             const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
             
-            {/* 修正：過濾字串開頭的 MM-DD 並轉換為 M/D 格式 */}
             const shortIssues = sd.issues.map(iss => iss.replace(/^(\d{2})-(\d{2})/, (m, month, day) => `${parseInt(month)}/${parseInt(day)}`));
 
-            {/* 修正：解析出用於報表標題的動態日期文字，改為 X/X 格式 */}
             const startStr = `${parseInt(reportStart.split('-')[1])}/${parseInt(reportStart.split('-')[2])}`;
             const endStr = `${parseInt(reportEnd.split('-')[1])}/${parseInt(reportEnd.split('-')[2])}`;
 
