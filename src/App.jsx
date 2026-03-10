@@ -5,6 +5,7 @@ import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderB
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X } from 'lucide-react';
 
 const APP_VERSION = "V21.8.260302_Stability_Fix";
+// 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -46,7 +47,6 @@ const App = () => {
  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
  const [pickerDate, setPickerDate] = useState(new Date());
 
- // 新增：登入視窗相關狀態
  const [showLoginModal, setShowLoginModal] = useState(false);
  const [loginEmail, setLoginEmail] = useState('');
  const [loginPwd, setLoginPwd] = useState('');
@@ -285,7 +285,6 @@ const App = () => {
    }
  };
 
- // 新增：處理登入邏輯的函式
  const handleLogin = async (e) => {
    e.preventDefault();
    setIsLoggingIn(true);
@@ -308,7 +307,6 @@ const App = () => {
  return (
    <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
      
-     {/* 新增：自訂登入視窗 (Modal) */}
      {showLoginModal && (
        <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
          <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border-4 border-sky-100 relative animate-in zoom-in-95 duration-200">
@@ -377,7 +375,6 @@ const App = () => {
              <div className="flex items-baseline gap-4">
                <h1 className="text-6xl font-black text-sky-900 leading-none">五甲航海日誌</h1>
                <span className="text-lg font-bold text-slate-300">Ver {APP_VERSION}</span>
-               {/* 修正：替換原生 prompt 為自訂 Modal */}
                <button 
                  onClick={() => user ? signOut(auth) : setShowLoginModal(true)} 
                  className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}
