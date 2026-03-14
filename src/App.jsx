@@ -410,6 +410,7 @@ const App = () => {
                        <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">戰術色彩主題</label>
                        <div className="flex flex-wrap gap-4">
                            {[
+                             { bg: 'bg-white', text: 'text-slate-800' }, // 新增：純淨白底
                              { bg: 'bg-amber-400', text: 'text-slate-900' },
                              { bg: 'bg-rose-600', text: 'text-white' },
                              { bg: 'bg-emerald-500', text: 'text-white' },
@@ -419,7 +420,7 @@ const App = () => {
                                <button 
                                  key={i}
                                  onClick={() => { setBcBgColor(theme.bg); setBcTextColor(theme.text); }}
-                                 className={`w-16 h-16 rounded-full border-4 shadow-md flex items-center justify-center transition-all active:scale-90 ${theme.bg} ${bcBgColor === theme.bg ? 'border-sky-400 scale-110 ring-4 ring-sky-200' : 'border-white hover:border-slate-300 hover:scale-105'}`}
+                                 className={`w-16 h-16 rounded-full border-4 shadow-md flex items-center justify-center transition-all active:scale-90 ${theme.bg} ${bcBgColor === theme.bg ? 'border-sky-400 scale-110 ring-4 ring-sky-200' : (theme.bg === 'bg-white' ? 'border-slate-200 hover:border-slate-400 hover:scale-105' : 'border-white hover:border-slate-300 hover:scale-105')}`}
                                  title="套用主題"
                                >
                                  <span className={`text-2xl font-black ${theme.text}`}>A</span>
