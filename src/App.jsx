@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Activity } from 'lucide-react';
 
-const APP_VERSION = "V22.0.1_Mood_Station_Edition";
+const APP_VERSION = "V22.0.2_Stability_Fix";
 // 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
@@ -77,13 +77,17 @@ const MoodStation = ({ student, onComplete, onClose }) => {
   };
 
   useEffect(() => {
+    // 戰術修復：將 onComplete 移出依賴陣列，避免 App 每秒重新渲染導致計時器被無限重置
     if (step === 3) {
       const timer = setTimeout(() => {
-        onComplete({ quadrant: selectedQuadrant.id, word: selectedWord });
-      }, 3500);
+        if (selectedQuadrant && selectedWord) {
+            onComplete({ quadrant: selectedQuadrant.id, word: selectedWord });
+        }
+      }, 2500); // 縮短為 2.5 秒讓體驗更流暢
       return () => clearTimeout(timer);
     }
-  }, [step, onComplete, selectedQuadrant, selectedWord]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, selectedQuadrant, selectedWord]);
 
   const selectQuadrant = (q) => {
     setSelectedQuadrant(q);
@@ -201,6 +205,10 @@ const App = () => {
  const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState(null);
  const [showBroadcastEditor, setShowBroadcastEditor] = useState(false);
  const [broadcastInput, setBroadcastInput] = useState("");
+ const [bcBgColor, setBcBgColor] = useState("bg-white");
+ const [bcTextColor, setBcTextColor] = useState("text-slate-800");
+ const [bcFontSize, setBcFontSize] = useState(80);
+ const [bcBiauKai, setBcBiauKai] = useState(false);
  
  const [moodModalStudent, setMoodModalStudent] = useState(null);
 
@@ -495,35 +503,46 @@ const App = () => {
         />
      )}
 
-     {/* 全域廣播接收視窗 (學生與大螢幕用) */}
+     {/* 戰術修復：防護全域廣播接收視窗避免 React 當機白畫面 */}
      {(() => {
-         const currentBroadcastId = broadcastData?.timestamp?.toMillis?.() || broadcastData?.message;
-         const isBroadcastVisible = broadcastData?.active && currentBroadcastId && currentBroadcastId !== dismissedBroadcastTime;
+         let isBroadcastVisible = false;
+         let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false };
+         let broadcastMessage = "";
+
+         if (broadcastData && broadcastData.active && broadcastData.message) {
+             const currentBroadcastId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
+             if (currentBroadcastId !== dismissedBroadcastTime) {
+                 isBroadcastVisible = true;
+                 broadcastSettings = broadcastData.settings || broadcastSettings;
+                 broadcastMessage = broadcastData.message;
+             }
+         }
          
          if (!isBroadcastVisible) return null;
          
-         const settings = broadcastData.settings || { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false };
-         
          return (
            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[9999] flex items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in duration-300 print:hidden">
-             <div className={`${settings.bgColor} rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] p-8 md:p-16 w-full max-w-[95vw] min-h-[80vh] border-[16px] border-white/20 flex flex-col items-center justify-center text-center relative`}>
+             <div className={`${broadcastSettings.bgColor} rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] p-8 md:p-16 w-full max-w-[95vw] min-h-[80vh] border-[16px] border-white/20 flex flex-col items-center justify-center text-center relative`}>
                <div className="absolute -top-20 bg-white/20 backdrop-blur-md p-6 rounded-full border-8 border-white/30 shadow-xl animate-bounce">
-                 <BellRing size={80} className={settings.textColor}/>
+                 <BellRing size={80} className={broadcastSettings.textColor}/>
                </div>
                <div className="flex-1 flex items-center justify-center w-full py-12">
                  <p 
                     style={{ 
-                        fontSize: `${settings.fontSize}px`, 
-                        fontFamily: settings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
+                        fontSize: `${broadcastSettings.fontSize}px`, 
+                        fontFamily: broadcastSettings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
                     }} 
-                    className={`font-black ${settings.textColor} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
+                    className={`font-black ${broadcastSettings.textColor} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
                  >
-                    {broadcastData.message}
+                    {broadcastMessage}
                  </p>
                </div>
                <button 
-                 onClick={() => setDismissedBroadcastTime(currentBroadcastId)} 
-                 className={`w-full max-w-2xl bg-black/20 hover:bg-black/40 ${settings.textColor} border-4 border-black/10 text-5xl font-black py-6 rounded-[2.5rem] shadow-xl transition-all active:scale-95 shrink-0`}
+                 onClick={() => {
+                   const cId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
+                   setDismissedBroadcastTime(cId);
+                 }} 
+                 className={`w-full max-w-2xl bg-black/20 hover:bg-black/40 ${broadcastSettings.textColor} border-4 border-black/10 text-5xl font-black py-6 rounded-[2.5rem] shadow-xl transition-all active:scale-95 shrink-0`}
                >
                  我知道了！
                </button>
@@ -728,9 +747,11 @@ const App = () => {
                     const closeDateTime = new Date(`${formatDate(viewDate)}T17:30:00`);
                     const isWithinTimeWindow = isToday && currentTime >= openDateTime && currentTime <= closeDateTime;
                     const canCheckIn = user || isWithinTimeWindow;
+                    
+                    // 戰術升級：允許老師在任何日期測試心情打卡，學生則只能在「今天」打卡
+                    const canDoMood = isToday || user;
 
-                    // 戰術升級：結合心情打卡與出勤打卡
-                    if (!d?.mood && canCheckIn && isToday) {
+                    if (!d?.mood && canCheckIn && canDoMood) {
                         setMoodModalStudent(s);
                     } else {
                         setSelectedTasks(d?.completedTasks || {}); 
@@ -897,7 +918,6 @@ const App = () => {
                   <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer group" onClick={() => sData && setViewOnlyStudent({ student: s, isHistory: true })}>
                     <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 group-hover:bg-sky-50/50 transition-all">{maskName(s.name)}</td>
                     
-                    {/* 戰術升級：運用 tabular-nums 與 inline-block 鎖定數字寬度，完美解決排版偏移 */}
                     <td className="p-5 border-r-2 border-sky-50">
                         <div className="flex justify-center items-center gap-6 text-2xl font-black">
                             <div className="flex items-center gap-2 text-emerald-600">
@@ -948,7 +968,6 @@ const App = () => {
                                   <span className="text-4xl font-black text-sky-800">{date}</span>{getStatusDisplay(rec.att, 'att')}
                               </div>
                               <div className="flex gap-2 flex-wrap pt-1">
-                                  {/* 指揮官專屬情報：將具體的心情詞彙顯示在歷史紀錄中 */}
                                   {rec.mood && (
                                       <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-2xl font-bold shadow-sm flex items-center gap-2" title="打卡時的心情">
                                         {getMoodEmoji(rec.mood.quadrant)} {rec.mood.word}
