@@ -49,7 +49,7 @@ const MoodStation = ({ student, onComplete, onClose }) => {
       description: '充滿動力、躍躍欲試',
       icon: <Sun className="w-20 h-20" />,
       words: ['興奮', '期待', '自信', '好奇', '熱忱', '活力'],
-      guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '輕輕握一下拳頭，感受體內飽滿的行動力。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
+      guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '在腦海中快速過一遍今日最重要的任務。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
       color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', text: 'text-white'
     },
     blue: {
@@ -83,7 +83,7 @@ const MoodStation = ({ student, onComplete, onClose }) => {
         if (selectedQuadrant && selectedWord) {
             onComplete({ quadrant: selectedQuadrant.id, word: selectedWord });
         }
-      }, 2500); // 縮短為 2.5 秒讓體驗更流暢
+      }, 5000); // 縮短為 5 秒讓體驗更流暢
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
