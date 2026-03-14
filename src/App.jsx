@@ -58,6 +58,12 @@ const App = () => {
  const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState(null);
  const [showBroadcastEditor, setShowBroadcastEditor] = useState(false);
  const [broadcastInput, setBroadcastInput] = useState("");
+ 
+ // 廣播動態控制台狀態
+ const [bcBgColor, setBcBgColor] = useState("bg-amber-400");
+ const [bcTextColor, setBcTextColor] = useState("text-slate-900");
+ const [bcFontSize, setBcFontSize] = useState(80);
+ const [bcBiauKai, setBcBiauKai] = useState(false);
 
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
@@ -333,17 +339,29 @@ const App = () => {
          
          if (!isBroadcastVisible) return null;
          
+         // 讀取資料庫傳來的格式設定，若無則使用預設值
+         const settings = broadcastData.settings || { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false };
+         
          return (
-           <div className="fixed inset-0 bg-amber-500/90 backdrop-blur-md z-[9999] flex items-center justify-center p-8 animate-in fade-in zoom-in duration-300 print:hidden">
-             <div className="bg-white rounded-[3rem] shadow-2xl p-12 w-full max-w-4xl border-[12px] border-amber-300 flex flex-col items-center text-center relative">
-               <div className="absolute -top-16 bg-amber-400 p-6 rounded-full border-8 border-white shadow-xl animate-bounce">
-                 <BellRing size={64} className="text-white"/>
+           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[9999] flex items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in duration-300 print:hidden">
+             <div className={`${settings.bgColor} rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] p-8 md:p-16 w-full max-w-[95vw] min-h-[80vh] border-[16px] border-white/20 flex flex-col items-center justify-center text-center relative`}>
+               <div className="absolute -top-20 bg-white/20 backdrop-blur-md p-6 rounded-full border-8 border-white/30 shadow-xl animate-bounce">
+                 <BellRing size={80} className={settings.textColor}/>
                </div>
-               <h2 className="text-5xl font-black text-amber-600 mt-8 mb-8 tracking-widest">艦長廣播</h2>
-               <p className="text-6xl font-black text-slate-800 leading-snug mb-12 whitespace-pre-wrap">{broadcastData.message}</p>
+               <div className="flex-1 flex items-center justify-center w-full py-12">
+                 <p 
+                    style={{ 
+                        fontSize: `${settings.fontSize}px`, 
+                        fontFamily: settings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
+                    }} 
+                    className={`font-black ${settings.textColor} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
+                 >
+                    {broadcastData.message}
+                 </p>
+               </div>
                <button 
                  onClick={() => setDismissedBroadcastTime(currentBroadcastId)} 
-                 className="w-full bg-amber-500 hover:bg-amber-600 text-white text-5xl font-black py-6 rounded-[2rem] shadow-xl transition-transform active:scale-95"
+                 className={`w-full max-w-2xl bg-black/20 hover:bg-black/40 ${settings.textColor} border-4 border-black/10 text-5xl font-black py-6 rounded-[2.5rem] shadow-xl transition-all active:scale-95 shrink-0`}
                >
                  我知道了！
                </button>
@@ -354,36 +372,89 @@ const App = () => {
 
      {/* 新增：廣播發布編輯器 (教師用) */}
      {showBroadcastEditor && user && (
-       <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
-         <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-2xl border-4 border-amber-200 relative zoom-in-95">
-           <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-full"><X size={24}/></button>
-           <h2 className="text-4xl font-black text-amber-600 flex items-center gap-3 mb-6"><Megaphone size={40}/> 發布全域廣播</h2>
-           <textarea 
-             value={broadcastInput} 
-             onChange={e => setBroadcastInput(e.target.value)} 
-             className="w-full h-40 p-4 border-2 border-amber-100 rounded-xl text-2xl font-bold focus:outline-none focus:ring-4 ring-amber-500/20 mb-4 bg-amber-50/30" 
-             placeholder="請輸入要廣播給全班的緊急任務或提醒..."
-           ></textarea>
-           <div className="flex gap-4">
+       <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
+         <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-5xl border-8 border-sky-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
+           <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
+           <h2 className="text-4xl font-black text-sky-800 flex items-center gap-4 mb-6 border-b-4 border-sky-100 pb-4 shrink-0"><Megaphone size={48}/> 全域廣播控制台</h2>
+           
+           <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar shrink">
+               {/* 預覽與輸入區 */}
+               <div className="flex flex-col gap-2">
+                   <label className="text-2xl font-bold text-slate-600 flex items-center gap-2"><Type size={28}/> 廣播內容與即時預覽</label>
+                   <textarea 
+                     value={broadcastInput} 
+                     onChange={e => setBroadcastInput(e.target.value)} 
+                     style={{ 
+                        fontSize: `${Math.min(bcFontSize, 60)}px`, // 在預覽區稍微限制最大字體以免難以編輯
+                        fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
+                     }}
+                     className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor}`} 
+                     placeholder="請輸入要廣播給全班的任務或提醒..."
+                   ></textarea>
+               </div>
+
+               {/* 控制面板 */}
+               <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="space-y-4">
+                       <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">字體設定</label>
+                       <div className="flex items-center gap-4">
+                           <button onClick={() => setBcBiauKai(!bcBiauKai)} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcBiauKai ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>切換標楷體</button>
+                           <div className="flex items-center bg-white border-2 border-slate-300 rounded-2xl overflow-hidden shadow-sm">
+                               <button onClick={() => setBcFontSize(f => Math.max(30, f - 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Minus size={28}/></button>
+                               <span className="w-20 text-center text-3xl font-black text-slate-800">{bcFontSize}</span>
+                               <button onClick={() => setBcFontSize(f => Math.min(150, f + 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Plus size={28}/></button>
+                           </div>
+                       </div>
+                   </div>
+                   <div className="space-y-4">
+                       <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">戰術色彩主題</label>
+                       <div className="flex flex-wrap gap-4">
+                           {[
+                             { bg: 'bg-amber-400', text: 'text-slate-900' },
+                             { bg: 'bg-rose-600', text: 'text-white' },
+                             { bg: 'bg-emerald-500', text: 'text-white' },
+                             { bg: 'bg-blue-600', text: 'text-white' },
+                             { bg: 'bg-slate-900', text: 'text-yellow-400' }
+                           ].map((theme, i) => (
+                               <button 
+                                 key={i}
+                                 onClick={() => { setBcBgColor(theme.bg); setBcTextColor(theme.text); }}
+                                 className={`w-16 h-16 rounded-full border-4 shadow-md flex items-center justify-center transition-all active:scale-90 ${theme.bg} ${bcBgColor === theme.bg ? 'border-sky-400 scale-110 ring-4 ring-sky-200' : 'border-white hover:border-slate-300 hover:scale-105'}`}
+                                 title="套用主題"
+                               >
+                                 <span className={`text-2xl font-black ${theme.text}`}>A</span>
+                               </button>
+                           ))}
+                       </div>
+                   </div>
+               </div>
+           </div>
+           
+           <div className="flex gap-6 mt-8 pt-6 border-t-4 border-sky-100 shrink-0">
              <button 
                onClick={async () => {
                  if(!broadcastInput.trim()) return;
-                 await setDoc(doc(db, "broadcasts", "current"), { message: broadcastInput.trim(), timestamp: serverTimestamp(), active: true });
+                 await setDoc(doc(db, "broadcasts", "current"), { 
+                     message: broadcastInput.trim(), 
+                     timestamp: serverTimestamp(), 
+                     active: true,
+                     settings: { bgColor: bcBgColor, textColor: bcTextColor, fontSize: bcFontSize, biauKai: bcBiauKai }
+                 });
                  setShowBroadcastEditor(false);
-                 setBroadcastInput("");
                }} 
-               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-transform active:scale-95"
+               className="flex-1 bg-sky-500 hover:bg-sky-600 text-white text-3xl font-black py-5 rounded-2xl shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-3"
              >
-               發布廣播
+               <Megaphone size={36}/> 立即發布全班廣播
              </button>
              <button 
                onClick={async () => {
                  await setDoc(doc(db, "broadcasts", "current"), { active: false }, { merge: true });
                  setShowBroadcastEditor(false);
+                 setBroadcastInput("");
                }} 
-               className="px-6 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xl font-bold py-4 rounded-xl transition-all"
+               className="px-8 bg-slate-200 hover:bg-slate-300 text-slate-700 text-2xl font-bold py-5 rounded-2xl transition-all border-2 border-slate-300 active:scale-95"
              >
-               收回/清除廣播
+               收回並清除
              </button>
            </div>
          </div>
