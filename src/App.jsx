@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
-import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X } from 'lucide-react';
+import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing } from 'lucide-react';
 
 const APP_VERSION = "V21.8.260302_Stability_Fix";
 // 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
@@ -53,6 +53,12 @@ const App = () => {
  const [loginError, setLoginError] = useState('');
  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+ // 新增：全域廣播相關狀態
+ const [broadcastData, setBroadcastData] = useState(null);
+ const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState(null);
+ const [showBroadcastEditor, setShowBroadcastEditor] = useState(false);
+ const [broadcastInput, setBroadcastInput] = useState("");
+
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
   const cycleHighlighter = async (index) => {
@@ -80,6 +86,19 @@ const App = () => {
    if (!db) return;
    onSnapshot(collection(db, "announcements"), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
  }, [db]);
+
+  // 新增：獨立的全域廣播雷達監聽器
+  useEffect(() => {
+    if (!db) return;
+    const unsubscribeBroadcast = onSnapshot(doc(db, "broadcasts", "current"), (snap) => {
+      if (snap.exists()) {
+        setBroadcastData(snap.data());
+      } else {
+        setBroadcastData(null);
+      }
+    });
+    return () => unsubscribeBroadcast();
+  }, [db]);
 
   useEffect(() => {
     if (!db) return;
@@ -307,6 +326,71 @@ const App = () => {
  return (
    <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
      
+     {/* 新增：全域廣播接收視窗 (學生與大螢幕用) */}
+     {(() => {
+         const currentBroadcastId = broadcastData?.timestamp?.toMillis?.() || broadcastData?.message;
+         const isBroadcastVisible = broadcastData?.active && currentBroadcastId && currentBroadcastId !== dismissedBroadcastTime;
+         
+         if (!isBroadcastVisible) return null;
+         
+         return (
+           <div className="fixed inset-0 bg-amber-500/90 backdrop-blur-md z-[9999] flex items-center justify-center p-8 animate-in fade-in zoom-in duration-300 print:hidden">
+             <div className="bg-white rounded-[3rem] shadow-2xl p-12 w-full max-w-4xl border-[12px] border-amber-300 flex flex-col items-center text-center relative">
+               <div className="absolute -top-16 bg-amber-400 p-6 rounded-full border-8 border-white shadow-xl animate-bounce">
+                 <BellRing size={64} className="text-white"/>
+               </div>
+               <h2 className="text-5xl font-black text-amber-600 mt-8 mb-8 tracking-widest">艦長廣播</h2>
+               <p className="text-6xl font-black text-slate-800 leading-snug mb-12 whitespace-pre-wrap">{broadcastData.message}</p>
+               <button 
+                 onClick={() => setDismissedBroadcastTime(currentBroadcastId)} 
+                 className="w-full bg-amber-500 hover:bg-amber-600 text-white text-5xl font-black py-6 rounded-[2rem] shadow-xl transition-transform active:scale-95"
+               >
+                 我知道了！
+               </button>
+             </div>
+           </div>
+         );
+     })()}
+
+     {/* 新增：廣播發布編輯器 (教師用) */}
+     {showBroadcastEditor && user && (
+       <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
+         <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-2xl border-4 border-amber-200 relative zoom-in-95">
+           <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-full"><X size={24}/></button>
+           <h2 className="text-4xl font-black text-amber-600 flex items-center gap-3 mb-6"><Megaphone size={40}/> 發布全域廣播</h2>
+           <textarea 
+             value={broadcastInput} 
+             onChange={e => setBroadcastInput(e.target.value)} 
+             className="w-full h-40 p-4 border-2 border-amber-100 rounded-xl text-2xl font-bold focus:outline-none focus:ring-4 ring-amber-500/20 mb-4 bg-amber-50/30" 
+             placeholder="請輸入要廣播給全班的緊急任務或提醒..."
+           ></textarea>
+           <div className="flex gap-4">
+             <button 
+               onClick={async () => {
+                 if(!broadcastInput.trim()) return;
+                 await setDoc(doc(db, "broadcasts", "current"), { message: broadcastInput.trim(), timestamp: serverTimestamp(), active: true });
+                 setShowBroadcastEditor(false);
+                 setBroadcastInput("");
+               }} 
+               className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-transform active:scale-95"
+             >
+               發布廣播
+             </button>
+             <button 
+               onClick={async () => {
+                 await setDoc(doc(db, "broadcasts", "current"), { active: false }, { merge: true });
+                 setShowBroadcastEditor(false);
+               }} 
+               className="px-6 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xl font-bold py-4 rounded-xl transition-all"
+             >
+               收回/清除廣播
+             </button>
+           </div>
+         </div>
+       </div>
+     )}
+
+     {/* 自訂登入視窗 (Modal) */}
      {showLoginModal && (
        <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
          <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border-4 border-sky-100 relative animate-in zoom-in-95 duration-200">
@@ -442,6 +526,9 @@ const App = () => {
               </button>
 
               <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
+              
+              {/* 新增：廣播發射按鈕 */}
+              <button onClick={() => setShowBroadcastEditor(true)} className="p-3 bg-amber-100 text-amber-600 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="發布全域廣播"><Megaphone size={32}/></button>
             </div>
           )}
         </div>
