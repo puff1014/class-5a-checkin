@@ -4,7 +4,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
 import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Activity } from 'lucide-react';
 
-const APP_VERSION = "V22.0.2_Stability_Fix";
+const APP_VERSION = "V22.0.3_Ultimate_Mood_Guard";
 // 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
@@ -23,7 +23,7 @@ const getMoodEmoji = (quadrant) => {
 };
 
 // --- 心情氣象站組件 ---
-const MoodStation = ({ student, onComplete, onClose }) => {
+const MoodStation = ({ student, onSave, onComplete, onClose }) => {
   const [step, setStep] = useState(1);
   const [selectedQuadrant, setSelectedQuadrant] = useState(null);
   const [selectedWord, setSelectedWord] = useState('');
@@ -49,7 +49,7 @@ const MoodStation = ({ student, onComplete, onClose }) => {
       description: '充滿動力、躍躍欲試',
       icon: <Sun className="w-20 h-20" />,
       words: ['興奮', '期待', '自信', '好奇', '熱忱', '活力'],
-      guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '在腦海中快速過一遍今日最重要的任務。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
+      guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '輕輕握一下拳頭，感受體內飽滿的行動力。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
       color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', text: 'text-white'
     },
     blue: {
@@ -77,17 +77,15 @@ const MoodStation = ({ student, onComplete, onClose }) => {
   };
 
   useEffect(() => {
-    // 戰術修復：將 onComplete 移出依賴陣列，避免 App 每秒重新渲染導致計時器被無限重置
     if (step === 3) {
+      // 戰術升級：5 秒倒數自動跳轉
       const timer = setTimeout(() => {
-        if (selectedQuadrant && selectedWord) {
-            onComplete({ quadrant: selectedQuadrant.id, word: selectedWord });
-        }
-      }, 5000); // 縮短為 5 秒讓體驗更流暢
+        onComplete();
+      }, 5000); 
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, selectedQuadrant, selectedWord]);
+  }, [step]);
 
   const selectQuadrant = (q) => {
     setSelectedQuadrant(q);
@@ -100,6 +98,10 @@ const MoodStation = ({ student, onComplete, onClose }) => {
   const selectWord = (word) => {
     setSelectedWord(word);
     setStep(3);
+    // 戰術升級：即時鎖定存檔 (Instant Save)
+    if (onSave && selectedQuadrant) {
+        onSave({ quadrant: selectedQuadrant.id, word: word });
+    }
   };
 
   return (
@@ -111,7 +113,7 @@ const MoodStation = ({ student, onComplete, onClose }) => {
         <p className="text-3xl text-slate-500 font-bold uppercase tracking-widest">
           {step === 1 && `Step 1: ${maskName(student.name)}，選擇當前電力與心情`}
           {step === 2 && `Step 2: ${maskName(student.name)}，點選心情詞彙`}
-          {step === 3 && "Step 3: 打卡成功！即將進入任務確認..."}
+          {step === 3 && "Step 3: 打卡成功！即將自動進入任務確認..."}
         </p>
       </div>
 
@@ -154,7 +156,7 @@ const MoodStation = ({ student, onComplete, onClose }) => {
               <p className="text-2xl text-slate-400 mb-6 font-black uppercase tracking-widest">今日行動指令</p>
               <p className="text-5xl font-black text-slate-900 leading-none whitespace-nowrap overflow-hidden text-ellipsis">{dailyGuide}</p>
             </div>
-            <p className="mt-12 text-slate-300 text-3xl font-black italic animate-pulse">即將自動跳轉至任務確認畫面...</p>
+            <p className="mt-12 text-slate-300 text-3xl font-black italic animate-pulse">約 5 秒後將自動跳轉至任務確認畫面...</p>
           </div>
         )}
       </div>
@@ -484,17 +486,22 @@ const App = () => {
      {moodModalStudent && (
         <MoodStation 
           student={moodModalStudent} 
-          onComplete={async (moodResult) => {
+          onSave={async (moodResult) => {
+              // 戰術升級：即時寫入資料庫
               const dateKey = formatDate(viewDate);
-              if(db) {
+              if (db) {
                   await setDoc(doc(db, `attendance_${dateKey}`, moodModalStudent.id), { mood: moodResult }, { merge: true });
               }
+          }}
+          onComplete={() => {
+              // 完成 5 秒倒數後自動跳轉至任務確認
               const s = moodModalStudent;
               setMoodModalStudent(null);
               setSelectedTasks(attendance[s.id]?.completedTasks || {});
               setActiveStudent(s);
           }}
           onClose={() => {
+              // 提早關閉視窗，資料已經在 onSave 時寫入過了
               const s = moodModalStudent;
               setMoodModalStudent(null);
               setSelectedTasks(attendance[s.id]?.completedTasks || {});
@@ -503,7 +510,7 @@ const App = () => {
         />
      )}
 
-     {/* 戰術修復：防護全域廣播接收視窗避免 React 當機白畫面 */}
+     {/* 防護全域廣播接收視窗避免 React 當機白畫面 */}
      {(() => {
          let isBroadcastVisible = false;
          let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false };
@@ -665,11 +672,10 @@ const App = () => {
            </div>
            <div className="w-px h-8 bg-sky-200 mx-1"></div>
            
-           {/* 戰術升級：日期標籤反向排序 (最新的在最左邊)，解決尋找新日期需要捲動的痛點 */}
            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1 flex-row">
              {recordedDates
                .filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth))
-               .sort((a,b) => b.localeCompare(a)) // 強制降冪排序
+               .sort((a,b) => b.localeCompare(a))
                .map(d => (
                  <button key={d} onClick={() => { setViewDate(new Date(d)); setIsEditing(false); }} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
                    {d.split('-')[2]}
@@ -747,8 +753,6 @@ const App = () => {
                     const closeDateTime = new Date(`${formatDate(viewDate)}T17:30:00`);
                     const isWithinTimeWindow = isToday && currentTime >= openDateTime && currentTime <= closeDateTime;
                     const canCheckIn = user || isWithinTimeWindow;
-                    
-                    // 戰術升級：允許老師在任何日期測試心情打卡，學生則只能在「今天」打卡
                     const canDoMood = isToday || user;
 
                     if (!d?.mood && canCheckIn && canDoMood) {
@@ -760,7 +764,6 @@ const App = () => {
                   }} 
                   className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 relative overflow-hidden ${color}`}
                 >
-                  {/* 指揮官視角：主畫面偷偷顯示學生的心情 Emoji */}
                   {d?.mood && <span className="absolute top-2 right-3 text-3xl opacity-80" title="今日心情">{getMoodEmoji(d.mood.quadrant)}</span>}
                   <span className="text-5xl font-black">{maskName(s.name)}</span>
                   {d?.checkinTime && <span className={`text-2xl font-black mt-1 ${attStat === 'late' ? 'text-pink-700' : (attStat === 'on-time' ? 'text-emerald-500' : '')}`}>{textStatus}</span>}
@@ -917,7 +920,6 @@ const App = () => {
                 return (
                   <tr key={s.id} className="hover:bg-sky-50/50 transition-colors cursor-pointer group" onClick={() => sData && setViewOnlyStudent({ student: s, isHistory: true })}>
                     <td className="p-5 text-3xl font-black text-sky-900 border-r-2 border-sky-50 sticky left-0 z-10 bg-white text-left pl-10 group-hover:text-sky-600 group-hover:bg-sky-50/50 transition-all">{maskName(s.name)}</td>
-                    
                     <td className="p-5 border-r-2 border-sky-50">
                         <div className="flex justify-center items-center gap-6 text-2xl font-black">
                             <div className="flex items-center gap-2 text-emerald-600">
@@ -958,7 +960,32 @@ const App = () => {
         return (
           <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
             <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
-              <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0"><h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">{maskName(activeStudent?.name || viewOnlyStudent?.student.name)} <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">{viewOnlyStudent?.isHistory ? `區間學習歷程` : `任務確認 - ${formatDate(viewDate)}`}</span></h3><button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button></div>
+              
+              {/* 戰術升級：任務確認標題區塊新增「修改心情」重啟按鈕 */}
+              <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
+                <h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">
+                    {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
+                    <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">
+                        {viewOnlyStudent?.isHistory ? `區間學習歷程` : `任務確認 - ${formatDate(viewDate)}`}
+                    </span>
+                    
+                    {activeStudent && (
+                        <button 
+                            onClick={() => {
+                                const s = activeStudent;
+                                setActiveStudent(null);
+                                setMoodModalStudent(s);
+                            }}
+                            className="ml-4 text-2xl font-bold bg-amber-100 text-amber-700 border-2 border-amber-200 px-5 py-2 rounded-2xl hover:bg-amber-200 transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+                            title="重新選擇今日心情"
+                        >
+                            🌤️ 修改今日心情
+                        </button>
+                    )}
+                </h3>
+                <button onClick={() => { setActiveStudent(null); setViewOnlyStudent(null); }} className="text-slate-300 hover:text-red-500 transition-all transform hover:rotate-90 bg-slate-50 rounded-full p-2"><XCircle size={64}/></button>
+              </div>
+
               <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
                 {viewOnlyStudent?.isHistory ? (
                   <div className="space-y-3">
