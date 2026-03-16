@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
-import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Activity } from 'lucide-react';
+import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Activity, Radar, DownloadCloud } from 'lucide-react';
 
-const APP_VERSION = "V22.0.3_Ultimate_Mood_Guard";
+const APP_VERSION = "V22.0.4_Radar_&_Export_Edition";
 // 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
-const QUICK_TAGS = ["預習數課", "數習", "數八", "背成+小+寫", "國甲", "國乙", "國丙", "國習", "國隨", "閱讀A", "閱讀B", "國預習單", "朗讀", "解釋單", "帶學用品", "訂正功課", "訂正作文", "訂簽國卷", "訂簽數卷"];
+const QUICK_TAGS = ["預習數課", "數習", "數八", "背成+小+寫", "國甲", "國乙", "國丙", "國習", "國隨", "閱讀A", "閱讀B", "國預習單", "朗讀", "解釋單", "國練卷", "符號本", "帶學用品", "訂正功課"];
 
 const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const maskName = (n) => n ? n[0] + "O" + (n[2] || "") : "";
@@ -78,7 +78,6 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
 
   useEffect(() => {
     if (step === 3) {
-      // 戰術升級：5 秒倒數自動跳轉
       const timer = setTimeout(() => {
         onComplete();
       }, 5000); 
@@ -98,7 +97,6 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
   const selectWord = (word) => {
     setSelectedWord(word);
     setStep(3);
-    // 戰術升級：即時鎖定存檔 (Instant Save)
     if (onSave && selectedQuadrant) {
         onSave({ quadrant: selectedQuadrant.id, word: word });
     }
@@ -213,6 +211,7 @@ const App = () => {
  const [bcBiauKai, setBcBiauKai] = useState(false);
  
  const [moodModalStudent, setMoodModalStudent] = useState(null);
+ const [showMoodRadar, setShowMoodRadar] = useState(false);
 
  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
@@ -364,7 +363,6 @@ const App = () => {
          else if (finalAtt === 'sick') stats[sid].sick++;
          else if (finalAtt === 'personal') stats[sid].personal++;
          
-         // 擷取心情數據供歷史紀錄查詢
          stats[sid].dailyRecords[dKey] = { att: finalAtt, missingList: [], lateList: [], allDone: false, mood: d.mood };
          
          if (dailyTasks.length > 0) {
@@ -478,6 +476,29 @@ const App = () => {
    }
  };
 
+ // 戰術匯出引擎 (CSV Export)
+ const handleExportCSV = () => {
+    let csvContent = '\uFEFF'; // BOM for Excel UTF-8
+    csvContent += `五年甲班 學習表現統計表 (${reportStart} 至 ${reportEnd})\n\n`;
+    csvContent += '座號,姓名,準時天數,遲到天數,缺席天數,作業齊全天數,作業遲交天數,作業缺交天數,需補交明細\n';
+
+    STUDENTS.forEach(s => {
+      const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+      const absentDays = sd.sick + sd.personal;
+      const issuesStr = sd.issues.length > 0 ? sd.issues.join('; ') : '無';
+      csvContent += `${s.id},${s.name},${sd.onTime},${sd.late},${absentDays},${sd.fullDoneDays},${sd.lateDays},${sd.missingDays},"${issuesStr}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `五年甲班_學習表現統計_${reportStart}_${reportEnd}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
  const isPublished = recordedDates.includes(formatDate(viewDate));
 
  return (
@@ -487,21 +508,18 @@ const App = () => {
         <MoodStation 
           student={moodModalStudent} 
           onSave={async (moodResult) => {
-              // 戰術升級：即時寫入資料庫
               const dateKey = formatDate(viewDate);
               if (db) {
                   await setDoc(doc(db, `attendance_${dateKey}`, moodModalStudent.id), { mood: moodResult }, { merge: true });
               }
           }}
           onComplete={() => {
-              // 完成 5 秒倒數後自動跳轉至任務確認
               const s = moodModalStudent;
               setMoodModalStudent(null);
               setSelectedTasks(attendance[s.id]?.completedTasks || {});
               setActiveStudent(s);
           }}
           onClose={() => {
-              // 提早關閉視窗，資料已經在 onSave 時寫入過了
               const s = moodModalStudent;
               setMoodModalStudent(null);
               setSelectedTasks(attendance[s.id]?.completedTasks || {});
@@ -557,6 +575,73 @@ const App = () => {
            </div>
          );
      })()}
+
+     {/* 班級氣象雷達 (教師專屬) */}
+     {showMoodRadar && user && (
+       <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
+         <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-6xl border-8 border-indigo-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
+           <button onClick={() => setShowMoodRadar(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
+           <h2 className="text-4xl font-black text-indigo-800 flex items-center gap-4 mb-6 border-b-4 border-indigo-100 pb-4 shrink-0"><Radar size={48}/> 班級氣象雷達 - {formatDate(viewDate)}</h2>
+           
+           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+               <div className="grid grid-cols-2 gap-6">
+                   {/* 陽光區 */}
+                   <div className="bg-yellow-50 rounded-[2rem] p-6 border-4 border-yellow-200 shadow-sm">
+                       <h3 className="text-3xl font-black text-yellow-700 mb-4 flex items-center gap-2"><Sun size={36}/> 高電力 / 陽光</h3>
+                       <div className="flex flex-wrap gap-3">
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').map(s => (
+                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-yellow-800 shadow-sm border border-yellow-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                           ))}
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').length === 0 && <span className="text-xl text-yellow-500/60 font-bold italic">目前無資料</span>}
+                       </div>
+                   </div>
+                   
+                   {/* 起伏區 (紅) */}
+                   <div className="bg-red-50 rounded-[2rem] p-6 border-4 border-red-200 shadow-sm">
+                       <h3 className="text-3xl font-black text-red-700 mb-4 flex items-center gap-2"><Zap size={36}/> 高電力 / 起伏</h3>
+                       <div className="flex flex-wrap gap-3">
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').map(s => (
+                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-red-800 shadow-sm border border-red-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                           ))}
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').length === 0 && <span className="text-xl text-red-500/60 font-bold italic">目前無資料</span>}
+                       </div>
+                   </div>
+
+                   {/* 穩定區 (綠) */}
+                   <div className="bg-green-50 rounded-[2rem] p-6 border-4 border-green-200 shadow-sm">
+                       <h3 className="text-3xl font-black text-green-700 mb-4 flex items-center gap-2"><Leaf size={36}/> 低電力 / 陽光</h3>
+                       <div className="flex flex-wrap gap-3">
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').map(s => (
+                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-green-800 shadow-sm border border-green-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                           ))}
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').length === 0 && <span className="text-xl text-green-500/60 font-bold italic">目前無資料</span>}
+                       </div>
+                   </div>
+
+                   {/* 沮喪區 (藍) */}
+                   <div className="bg-blue-50 rounded-[2rem] p-6 border-4 border-blue-200 shadow-sm">
+                       <h3 className="text-3xl font-black text-blue-700 mb-4 flex items-center gap-2"><Cloud size={36}/> 低電力 / 起伏</h3>
+                       <div className="flex flex-wrap gap-3">
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').map(s => (
+                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-blue-800 shadow-sm border border-blue-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                           ))}
+                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').length === 0 && <span className="text-xl text-blue-500/60 font-bold italic">目前無資料</span>}
+                       </div>
+                   </div>
+               </div>
+               
+               <div className="mt-6 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+                   <h3 className="text-2xl font-bold text-slate-500 mb-2">尚未打卡 / 無心情紀錄：</h3>
+                   <div className="flex flex-wrap gap-2">
+                       {STUDENTS.filter(s => !attendance[s.id]?.mood).map(s => (
+                           <span key={s.id} className="bg-white px-3 py-1 rounded-lg text-xl font-bold text-slate-400 border border-slate-200 shadow-sm">{maskName(s.name)}</span>
+                       ))}
+                   </div>
+               </div>
+           </div>
+         </div>
+       </div>
+     )}
 
      {/* 廣播發布編輯器 (教師用) */}
      {showBroadcastEditor && user && (
@@ -694,6 +779,8 @@ const App = () => {
               </div>
               <button onClick={async () => { if (!user || !db) return; const dateKey = formatDate(viewDate); if (!recordedDates.includes(dateKey)) { setRecordedDates(prev => [...prev, dateKey].sort()); } await setDoc(doc(db, "announcements", dateKey), { date: dateKey, items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] }, { merge: true }); setViewDate(new Date(viewDate)); setIsEditing(false); }} className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="在此日期新增任務"><Plus size={32}/></button>
               <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
+              {/* 戰術升級：新增「氣象雷達」快捷鍵 */}
+              <button onClick={() => setShowMoodRadar(true)} className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all shadow-sm" title="開啟班級氣象雷達"><Radar size={32}/></button>
               <button onClick={() => setShowBroadcastEditor(true)} className="p-3 bg-amber-100 text-amber-600 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="發布全域廣播"><Megaphone size={32}/></button>
             </div>
           )}
@@ -906,6 +993,8 @@ const App = () => {
               <span className="text-sky-400 font-bold">至</span>
               <input type="date" value={reportEnd} onChange={(e) => setReportEnd(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
             </div>
+            {/* 戰術升級：新增一鍵匯出 CSV */}
+            {user && <button onClick={handleExportCSV} className="flex items-center gap-3 bg-green-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-green-700 shadow-xl transition-all active:scale-95"><DownloadCloud size={24}/> 匯出 CSV</button>}
             {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
         </div>
@@ -961,7 +1050,6 @@ const App = () => {
           <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
             <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
               
-              {/* 戰術升級：任務確認標題區塊新增「修改心情」重啟按鈕 */}
               <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
                 <h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">
                     {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
