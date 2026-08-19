@@ -285,16 +285,17 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     const fetchPrev = async () => {
       const q = query(collection(db, annColName), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
       const snap = await getDocs(q);
-       const rawItems = snap.docs[0].data().items || [];
-       const filteredTasks = rawItems.filter(t => {
-         const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
-         return !text.startsWith('※') && !text.startsWith(' ');
-       });
-       setPrevTasks(filteredTasks);
-     } else {
-       setPrevTasks([]);
-     }
-   };
+      if (!snap.empty) {
+        const rawItems = snap.docs[0].data().items || [];
+        const filteredTasks = rawItems.filter(t => {
+          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
+          return !text.startsWith('※') && !text.startsWith(' ');
+        });
+        setPrevTasks(filteredTasks);
+      } else {
+        setPrevTasks([]);
+      }
+    };
    fetchPrev();
   }, [db, viewDate, isEditing, selectedAcademicYear]);
  const getAutoAttStatus = (id, time) => {
