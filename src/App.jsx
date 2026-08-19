@@ -809,7 +809,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                 <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
                 <button onClick={() => { setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1))); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
               </div>
-              <button onClick={async () => { if (!user || !db) return; const dateKey = formatDate(viewDate); if (!recordedDates.includes(dateKey)) { setRecordedDates(prev => [...prev, dateKey].sort()); } await setDoc(doc(db, "announcements", dateKey), { date: dateKey, items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] }, { merge: true }); setViewDate(new Date(viewDate)); setIsEditing(false); }} className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="在此日期新增任務"><Plus size={32}/></button>
+              <button onClick={async () => { if (!user || !db) return; const dateKey = formatDate(viewDate); const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`; const annColName = `${prefix}announcements`; if (!recordedDates.includes(dateKey)) { setRecordedDates(prev => [...prev, dateKey].sort()); } await setDoc(doc(db, annColName, dateKey), { date: dateKey, items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] }, { merge: true }); setViewDate(new Date(viewDate)); setIsEditing(false); }} className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="在此日期新增任務"><Plus size={32}/></button>
               <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
               {/* 戰術升級：新增「氣象雷達」快捷鍵 */}
               <button onClick={() => setShowMoodRadar(true)} className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all shadow-sm" title="開啟班級氣象雷達"><Radar size={32}/></button>
@@ -936,20 +936,22 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
               {user && (
                 <button 
                   onClick={async () => {
-                    if (isEditing) {
-                      setIsEditing(false);
-                      const dateKey = formatDate(viewDate);
-                      const newItems = announcementText.split('\n')
-                        .filter(Boolean)
-                        .map(t => ({ text: t.trim(), colorIdx: 0 }));
-                      await setDoc(doc(db, "announcements", dateKey), { 
-                        items: newItems, 
-                        date: dateKey 
-                      }, { merge: true });
-                    } else {
-                      setIsEditing(true);
-                    }
-                  }} 
+                  if (isEditing) {
+                    setIsEditing(false);
+                    const dateKey = formatDate(viewDate);
+                    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+                    const annColName = `${prefix}announcements`;
+                    const newItems = announcementText.split('\n')
+                      .filter(Boolean)
+                      .map(t => ({ text: t.trim(), colorIdx: 0 }));
+                    await setDoc(doc(db, annColName, dateKey), {
+                      items: newItems,
+                      date: dateKey
+                    }, { merge: true });
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
                   className="bg-emerald-500 hover:bg-emerald-400 px-8 py-3 rounded-2xl font-black text-2xl shadow-lg transition-transform active:scale-95 text-white"
                 >
                   {isEditing ? '儲存任務' : '編輯任務'}
