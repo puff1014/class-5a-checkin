@@ -159,6 +159,8 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         )}
       </div>
     </div>
+      );
+}; //
  const App = () => {
  const [db, setDb] = useState(null);
  const [auth, setAuth] = useState(null);
