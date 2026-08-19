@@ -225,7 +225,9 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     const colorIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
     const nextIdx = (colorIdx + 1) % highlighterColors.length;
     newItems[index] = { text, colorIdx: nextIdx };
-    await setDoc(doc(db, "announcements", dateKey), { items: newItems }, { merge: true });
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const annColName = `${prefix}announcements`;
+    await setDoc(doc(db, annColName, dateKey), { items: newItems }, { merge: true });
   };
 
  useEffect(() => {
@@ -238,9 +240,11 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  }, []);
 
  useEffect(() => {
-   if (!db) return;
-   onSnapshot(collection(db, "announcements"), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
- }, [db]);
+    if (!db) return;
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const annColName = `${prefix}announcements`;
+    onSnapshot(collection(db, annColName), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
+  }, [db, selectedAcademicYear]);
 
   useEffect(() => {
     if (!db) return;
@@ -338,10 +342,14 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
      const targetDates = recordedDates.filter(d => d >= reportStart && d <= reportEnd);
      const stats = {};
      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
-     for (const dKey of targetDates) {
-       const attSnap = await getDocs(collection(db, `attendance_${dKey}`));
-       const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
-       const annSnap = await getDocs(query(collection(db, "announcements"), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
+     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const annColName = `${prefix}announcements`;
+
+    for (const dKey of targetDates) {
+      const attColName = prefix ? `${prefix}attendance_${dKey}` : `attendance_${dKey}`;
+      const attSnap = await getDocs(collection(db, attColName));
+      const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
+      const annSnap = await getDocs(query(collection(db, annColName), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
        const rawDailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
        const dailyTasks = rawDailyTasks.filter(t => {
          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
@@ -394,7 +402,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
      if (isMounted) setMonthlyStats(stats);
    };
    fetchStats(); return () => { isMounted = false; };
- }, [db, reportStart, reportEnd, recordedDates, attendance, viewDate, refreshCounter]);
+ }, [db, reportStart, reportEnd, recordedDates, attendance, viewDate, refreshCounter, selectedAcademicYear]);
 
  const cycleManualAtt = async (studentId) => {
    if (!user) return;
@@ -403,7 +411,9 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
    const current = d.manualAtt || 'auto';
    const cycle = ['auto', 'on-time', 'late', 'sick', 'personal'];
    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-   await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualAtt: next === 'auto' ? deleteField() : next }, { merge: true });
+   const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+    await setDoc(doc(db, attColName, studentId), { manualAtt: next === 'auto' ? deleteField() : next }, { merge: true });
    setRefreshCounter(prev => prev + 1);
  };
 
@@ -419,7 +429,9 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
    const updatedTasks = { ...currentManualTasks };
    if (nextStatus === 'auto') { updatedTasks[cleanT] = null; }
    else { updatedTasks[cleanT] = nextStatus; }
-   await setDoc(doc(db, `attendance_${dateKey}`, studentId), { manualTasks: updatedTasks }, { merge: true });
+   const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+  const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+  await setDoc(doc(db, attColName, studentId), { manualTasks: updatedTasks }, { merge: true });
    setRefreshCounter(prev => prev + 1);
  };
 
@@ -444,26 +456,29 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  };
 
  const submitCheckin = async (status = 'present') => {
-   const dateKey = formatDate(viewDate);
-   const nowTime = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-   await setDoc(doc(db, `attendance_${dateKey}`, activeStudent.id), {
-     name: activeStudent.name, status, completedTasks: selectedTasks, checkinTime: attendance[activeStudent.id]?.checkinTime || nowTime, lastActionTime: nowTime, timestamp: serverTimestamp()
-   }, { merge: true });
-   setActiveStudent(null);
- };
-
+    const dateKey = formatDate(viewDate);
+    const nowTime = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+    await setDoc(doc(db, attColName, activeStudent.id), {
+      name: activeStudent.name, status, completedTasks: selectedTasks, checkinTime: attendance[activeStudent.id]?.checkinTime || nowTime, lastActionTime: nowTime, timestamp: serverTimestamp()
+    }, { merge: true });
+    setActiveStudent(null);
+  };
  const handleDeleteDate = async (dateStr) => {
-   if (!user) return;
-   if (window.confirm(`確定要刪除 ${dateStr} 的紀錄與標籤嗎？`)) {
-     const batch = writeBatch(db);
-     batch.delete(doc(db, "announcements", dateStr));
-     const attDocs = await getDocs(collection(db, `attendance_${dateStr}`));
-     attDocs.forEach(d => batch.delete(d.ref));
-     await batch.commit();
-     if (dateStr === formatDate(viewDate)) { setDisplayItems([]); setAnnouncementText(""); setAttendance({}); }
-   }
- };
-
+  if (!user) return;
+  if (window.confirm(`確定要刪除 ${dateStr} 的紀錄與標籤嗎？`)) {
+    const batch = writeBatch(db);
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const annColName = `${prefix}announcements`;
+    const attColName = prefix ? `${prefix}attendance_${dateStr}` : `attendance_${dateStr}`;
+    batch.delete(doc(db, annColName, dateStr));
+    const attDocs = await getDocs(collection(db, attColName));
+    attDocs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    if (dateStr === formatDate(viewDate)) { setDisplayItems([]); setAnnouncementText(""); setAttendance({}); }
+  }
+};
  const handleLogin = async (e) => {
    e.preventDefault();
    setIsLoggingIn(true);
@@ -484,7 +499,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  // 戰術匯出引擎 (CSV Export)
  const handleExportCSV = () => {
     let csvContent = '\uFEFF'; // BOM for Excel UTF-8
-    csvContent += `五年甲班 學習表現統計表 (${reportStart} 至 ${reportEnd})\n\n`;
+    csvContent += `${selectedAcademicYear === '114' ? '五年甲班' : '六年甲班'} 學習表現統計表 (${reportStart} 至 ${reportEnd})\n\n`;
     csvContent += '座號,姓名,準時天數,遲到天數,缺席天數,作業齊全天數,作業遲交天數,作業缺交天數,需補交明細\n';
 
     STUDENTS.forEach(s => {
@@ -498,7 +513,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `五年甲班_學習表現統計_${reportStart}_${reportEnd}.csv`;
+    link.download = `${selectedAcademicYear === '114' ? '五年甲班' : '六年甲班'}_學習表現統計_${reportStart}_${reportEnd}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -515,7 +530,9 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
           onSave={async (moodResult) => {
               const dateKey = formatDate(viewDate);
               if (db) {
-                  await setDoc(doc(db, `attendance_${dateKey}`, moodModalStudent.id), { mood: moodResult }, { merge: true });
+                  const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { merge: true });
               }
           }}
           onComplete={() => {
