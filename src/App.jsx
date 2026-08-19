@@ -1218,12 +1218,8 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+            </div>
   );
-};
+}
 
 export default App;
