@@ -256,7 +256,6 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     return () => unsubscribeBroadcast();
   }, [db]);
 
-  useEffect(() => {
     useEffect(() => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
@@ -1173,12 +1172,12 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                         事假
                       </button>
                     </div>
-                  </div>
-                );
-              })()}
-            </div>
+                </div>
+              );
+            })()
           </div>
-        )}
+        </div>
+      )}
       <div className="hidden print:block p-4 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
         <div className="flex flex-col gap-6">
@@ -1223,4 +1222,4 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
 };
 
 export default App;
- export default App;
+
