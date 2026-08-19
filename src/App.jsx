@@ -167,9 +167,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  const [user, setUser] = useState(null);
  const [viewDate, setViewDate] = useState(new Date());
  
- // 👇 新增這裡的兩行
- const [selectedAcademicYear, setSelectedAcademicYear] = useState('115'); // 115學年度(六年級)
- const [selectedSemester, setSelectedSemester] = useState('S1');         // 上學期
+ const [selectedAcademicYear, setSelectedAcademicYear] = useState('114');
  const [currentTime, setCurrentTime] = useState(new Date());
  const [isEditing, setIsEditing] = useState(false);
  const [displayItems, setDisplayItems] = useState([]);
@@ -260,32 +258,33 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
    if (!db) return;
    const dateKey = formatDate(viewDate);
    
-   // 💡 加上學年度前綴，讓 5 年級與 6 年級的資料庫路徑完全隔離
-   const prefix = selectedAcademicYear;
-   
-   onSnapshot(doc(db, `${prefix}_announcements`, dateKey), (snap) => {
-     const data = snap.exists() ? snap.data() : { items: [] };
-     const rawItems = data.items || [];
-     const normalizedItems = rawItems.map(item => {
-       if (typeof item === 'string') return { text: item, colorIdx: 0 };
-       return item || { text: "", colorIdx: 0 };
-     });
-     setDisplayItems(normalizedItems);
-     if (!isEditing) {
-       setAnnouncementText(normalizedItems.map(i => i.text).join('\n'));
-     }
-   });
+  // 💡 114 學年度直接讀取原本的集合；115 學年度才隔離加上前綴
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const annColName = `${prefix}announcements`;
+    const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
 
-   onSnapshot(collection(db, `${prefix}_attendance_${dateKey}`), (snap) => {
-     const data = {};
-     snap.forEach(d => data[d.id] = d.data());
-     setAttendance(data);
-   });
+    onSnapshot(doc(db, annColName, dateKey), (snap) => {
+      const data = snap.exists() ? snap.data() : { items: [] };
+      const rawItems = data.items || [];
+      const normalizedItems = rawItems.map(item => {
+        if (typeof item === 'string') return { text: item, colorIdx: 0 };
+        return item || { text: "", colorIdx: 0 };
+      });
+      setDisplayItems(normalizedItems);
+      if (!isEditing) {
+        setAnnouncementText(normalizedItems.map(i => i.text).join('\n'));
+      }
+    });
 
-   const fetchPrev = async () => {
-     const q = query(collection(db, `${prefix}_announcements`), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
-     const snap = await getDocs(q);
-     if (!snap.empty) {
+    onSnapshot(collection(db, attColName), (snap) => {
+      const data = {};
+      snap.forEach(d => data[d.id] = d.data());
+      setAttendance(data);
+    });
+
+    const fetchPrev = async () => {
+      const q = query(collection(db, annColName), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
+      const snap = await getDocs(q);
        const rawItems = snap.docs[0].data().items || [];
        const filteredTasks = rawItems.filter(t => {
          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
@@ -742,26 +741,16 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                <button onClick={() => user ? signOut(auth) : setShowLoginModal(true)} className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}>
                  {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '已解鎖：教師模式' : '學生模式 (點擊登入)'}
                </button>
-                 {/* 👇 新增：學年度與學期切換選單 */}
-              <div className="flex items-center gap-2 bg-sky-50 px-4 py-2 rounded-2xl border border-sky-200 shadow-inner">
-                <select 
-                  value={selectedAcademicYear} 
-                  onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                  className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
-                >
-                  <option value="115">115學年度(六年級)</option>
-                  <option value="114">114學年度(五年級)</option>
-                </select>
-
-                <select 
-                  value={selectedSemester} 
-                  onChange={(e) => setSelectedSemester(e.target.value)}
-                  className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
-                >
-                  <option value="S1">上學期</option>
-                  <option value="S2">下學期</option>
-                </select>
-              </div>
+                 <div className="flex items-center gap-2 bg-sky-50 px-4 py-2 rounded-2xl border border-sky-200 shadow-inner">
+            <select
+              value={selectedAcademicYear}
+              onChange={(e) => setSelectedAcademicYear(e.target.value)}
+              className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
+            >
+              <option value="114">114學年度(五年級)</option>
+              <option value="115">115學年度(六年級)</option>
+            </select>
+          </div>
              </div>
              <p className="text-2xl font-normal text-sky-600/80 mt-2 tracking-[1.25em] font-serif italic whitespace-nowrap">學海無涯勤是岸</p>
            </div>
