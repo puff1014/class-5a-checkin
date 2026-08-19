@@ -13,7 +13,12 @@ const QUICK_TAGS = ["預習數課", "數習", "數八", "背成+小", "聯絡簿
 
 const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const maskName = (n) => n ? n[0] + "O" + (n[2] || "") : "";
-
+const getCurrentAcademicYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  return month >= 8 ? String(year - 1911) : String(year - 1911 - 1);
+};
 const getMoodEmoji = (quadrant) => {
     if(quadrant === 'red') return '⚡';
     if(quadrant === 'yellow') return '☀️';
@@ -167,8 +172,19 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  const [user, setUser] = useState(null);
  const [viewDate, setViewDate] = useState(new Date());
  
- const [selectedAcademicYear, setSelectedAcademicYear] = useState('114');
- const [currentTime, setCurrentTime] = useState(new Date());
+ const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getCurrentAcademicYear());
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  const handleYearChange = (year) => {
+    setSelectedAcademicYear(year);
+    if (year === '114') {
+      setReportStart('2025-08-01');
+      setReportEnd('2026-07-31');
+    } else {
+      setReportStart('2026-08-01');
+      setReportEnd('2027-07-31');
+    }
+  };
  const [isEditing, setIsEditing] = useState(false);
  const [displayItems, setDisplayItems] = useState([]);
  const [announcementText, setAnnouncementText] = useState("");
@@ -243,7 +259,10 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     if (!db) return;
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
-    onSnapshot(collection(db, annColName), (snap) => setRecordedDates(snap.docs.map(d => d.id).sort()));
+    const unsubscribe = onSnapshot(collection(db, annColName), (snap) => {
+      setRecordedDates(snap.docs.map(d => d.id).sort());
+    });
+    return () => unsubscribe();
   }, [db, selectedAcademicYear]);
 
   useEffect(() => {
@@ -259,15 +278,19 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
   }, [db]);
 
     useEffect(() => {
-   if (!db) return;
-   const dateKey = formatDate(viewDate);
-   
-  // 💡 114 學年度直接讀取原本的集合；115 學年度才隔離加上前綴
+    if (!db) return;
+    const dateKey = formatDate(viewDate);
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
     const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
 
-    onSnapshot(doc(db, annColName, dateKey), (snap) => {
+    // 💡 切換學年度時先清空畫面，避免殘留舊資料
+    setDisplayItems([]);
+    setAnnouncementText("");
+    setAttendance({});
+    setPrevTasks([]);
+
+    const unsubAnn = onSnapshot(doc(db, annColName, dateKey), (snap) => {
       const data = snap.exists() ? snap.data() : { items: [] };
       const rawItems = data.items || [];
       const normalizedItems = rawItems.map(item => {
@@ -280,7 +303,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       }
     });
 
-    onSnapshot(collection(db, attColName), (snap) => {
+    const unsubAtt = onSnapshot(collection(db, attColName), (snap) => {
       const data = {};
       snap.forEach(d => data[d.id] = d.data());
       setAttendance(data);
@@ -300,7 +323,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         setPrevTasks([]);
       }
     };
-   fetchPrev();
+    fetchPrev();
+
+    // 💡 關鍵：切換學年度時徹底斷開舊監聽器，防止被舊學年資料覆蓋
+    return () => {
+      unsubAnn();
+      unsubAtt();
+    };
   }, [db, viewDate, isEditing, selectedAcademicYear]);
  const getAutoAttStatus = (id, time) => {
    if (!time) return 'absent';
@@ -762,11 +791,20 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                  <div className="flex items-center gap-2 bg-sky-50 px-4 py-2 rounded-2xl border border-sky-200 shadow-inner">
             <select
               value={selectedAcademicYear}
-              onChange={(e) => setSelectedAcademicYear(e.target.value)}
+              onChange={(e) => handleYearChange(e.target.value)}
               className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
             >
-              <option value="114">114學年度(五年級)</option>
-              <option value="115">115學年度(六年級)</option>
+              {getCurrentAcademicYear() === '115' ? (
+                <>
+                  <option value="115">115學年度(六年級)</option>
+                  <option value="114">114學年度(五年級)</option>
+                </>
+              ) : (
+                <>
+                  <option value="114">114學年度(五年級)</option>
+                  <option value="115">115學年度(六年級)</option>
+                </>
+              )}
             </select>
           </div>
              </div>
