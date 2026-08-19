@@ -1173,22 +1173,15 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                         事假
                       </button>
                     </div>
-                  </div>
-                );
-              })()}
+                  </div>                
             </div>
-          </div>
-        );
-      })()}
-
+          </div>        
       <div className="hidden print:block p-4 bg-white text-black font-sans">
         <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
         <div className="flex flex-col gap-6">
           {STUDENTS.map(s => {
             const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-            
-            const shortIssues = sd.issues.map(iss => iss.replace(/^(\d{2})-(\d{2})/, (m, month, day) => `${parseInt(month)}/${parseInt(day)}`));
-
+            const shortIssues = sd.issues;
             const startStr = `${parseInt(reportStart.split('-')[1])}/${parseInt(reportStart.split('-')[2])}`;
             const endStr = `${parseInt(reportEnd.split('-')[1])}/${parseInt(reportEnd.split('-')[2])}`;
 
@@ -1217,9 +1210,14 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                     )) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
                   </div>
                 </div>
-              </div>
-            </div>
+</div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
-}
+};
 
 export default App;
+ export default App;
