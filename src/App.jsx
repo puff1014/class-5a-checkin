@@ -1172,7 +1172,9 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
                         事假
                       </button>
                    </div>
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );
