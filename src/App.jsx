@@ -737,7 +737,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
            <Ship className="w-16 h-16 text-sky-600 animate-pulse" />
            <div className="flex flex-col">
              <div className="flex items-baseline gap-4">
-               <h1 className="text-6xl font-black text-sky-900 leading-none">五甲航海日誌</h1>
+               <h1 className="text-6xl font-black text-sky-900 leading-none">{selectedAcademicYear === '114' ? '五甲' : '六甲'}航海日誌</h1>
                <span className="text-lg font-bold text-slate-300">Ver {APP_VERSION}</span>
                <button onClick={() => user ? signOut(auth) : setShowLoginModal(true)} className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}>
                  {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '已解鎖：教師模式' : '學生模式 (點擊登入)'}
@@ -1170,7 +1170,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         );
       })()}
       <div className="hidden print:block p-4 bg-white text-black font-sans">
-        <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">五年甲班 {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
+        <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">{selectedAcademicYear === '114' ? '五年甲班' : '六年甲班'} {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
         <div className="flex flex-col gap-6">
           {STUDENTS.map(s => {
             const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
