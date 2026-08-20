@@ -732,7 +732,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                      value={broadcastInput} 
                      onChange={e => setBroadcastInput(e.target.value)} 
                      style={{ fontSize: `${Math.min(bcFontSize, 60)}px`, fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
-                     className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor}`} 
+                     className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor} ${bcAlign}`} 
                      placeholder="請輸入要廣播給全班的任務或提醒..."
                    ></textarea>
                </div>
