@@ -225,6 +225,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
  const [bcBgColor, setBcBgColor] = useState("bg-white");
  const [bcTextColor, setBcTextColor] = useState("text-slate-800");
  const [bcFontSize, setBcFontSize] = useState(80);
+ const [bcAlign, setBcAlign] = useState("text-center");  
  const [bcBiauKai, setBcBiauKai] = useState(false);
  
  const [moodModalStudent, setMoodModalStudent] = useState(null);
@@ -725,6 +726,14 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                            </div>
                        </div>
                    </div>
+                 <div className="space-y-4">
+                  <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">對齊設定</label>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setBcAlign("text-left")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-left' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠左</button>
+                    <button onClick={() => setBcAlign("text-center")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-center' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>置中</button>
+                    <button onClick={() => setBcAlign("text-right")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-right' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠右</button>
+                  </div>
+                </div>
                    <div className="space-y-4">
                        <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">戰術色彩主題</label>
                        <div className="flex flex-wrap gap-4">
@@ -746,9 +755,21 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
            </div>
            
            <div className="flex gap-6 mt-8 pt-6 border-t-4 border-sky-100 shrink-0">
-             <button onClick={async () => { if(!broadcastInput.trim()) return; await setDoc(doc(db, "broadcasts", "current"), { message: broadcastInput.trim(), timestamp: serverTimestamp(), active: true, settings: { bgColor: bcBgColor, textColor: bcTextColor, fontSize: bcFontSize, biauKai: bcBiauKai } }); setShowBroadcastEditor(false); }} className="flex-1 bg-sky-500 hover:bg-sky-600 text-white text-3xl font-black py-5 rounded-2xl shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-3">
-               <Megaphone size={36}/> 立即發布全班廣播
-             </button>
+             <button 
+                onClick={async () => {
+                  if(!broadcastInput.trim()) return;
+                  await setDoc(doc(db, "broadcasts", "current"), { 
+                    message: broadcastInput.trim(), 
+                    timestamp: serverTimestamp(), 
+                    active: true,
+                    settings: { bgColor: bcBgColor, textColor: bcTextColor, fontSize: bcFontSize, biauKai: bcBiauKai, textAlign: bcAlign }
+                  });
+                  setShowBroadcastEditor(false);
+                }} 
+                className="flex-1 bg-sky-500 hover:bg-sky-600 text-white text-3xl font-black py-5 rounded-2xl shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-3"
+              >
+                <Megaphone size={36}/> 立即發布全班廣播
+              </button>
              <button onClick={async () => { await setDoc(doc(db, "broadcasts", "current"), { active: false }, { merge: true }); setShowBroadcastEditor(false); setBroadcastInput(""); }} className="px-8 bg-slate-200 hover:bg-slate-300 text-slate-700 text-2xl font-bold py-5 rounded-2xl transition-all border-2 border-slate-300 active:scale-95">
                收回並清除
              </button>
