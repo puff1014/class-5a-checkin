@@ -583,7 +583,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
      {/* 防護全域廣播接收視窗避免 React 當機白畫面 */}
      {(() => {
          let isBroadcastVisible = false;
-         let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false };
+         let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false, textAlign: 'text-center' };
          let broadcastMessage = "";
 
          if (broadcastData && broadcastData.active && broadcastData.message) {
@@ -609,7 +609,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                         fontSize: `${broadcastSettings.fontSize}px`, 
                         fontFamily: broadcastSettings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
                     }} 
-                    className={`font-black ${broadcastSettings.textColor} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
+                    className={`font-black ${broadcastSettings.textColor} ${broadcastSettings.textAlign || 'text-center'} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
                  >
                     {broadcastMessage}
                  </p>
@@ -731,7 +731,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                    <textarea 
                      value={broadcastInput} 
                      onChange={e => setBroadcastInput(e.target.value)} 
-                     style={{ fontSize: `${Math.min(bcFontSize, 60)}px`, fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
+                     style={{ fontSize: `${bcFontSize}px`, fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
                      className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor} ${bcAlign}`} 
                      placeholder="請輸入要廣播給全班的任務或提醒..."
                    ></textarea>
