@@ -700,7 +700,30 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
        <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
          <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-5xl border-8 border-sky-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
            <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
-           <h2 className="text-4xl font-black text-sky-800 flex items-center gap-4 mb-6 border-b-4 border-sky-100 pb-4 shrink-0"><Megaphone size={48}/> 全域廣播控制台</h2>
+           <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b-4 border-sky-100 pb-4 pr-16 shrink-0">
+              <h2 className="text-4xl font-black text-sky-800 flex items-center gap-4">
+                <Megaphone size={48}/> 全域廣播控制台
+              </h2>
+              <div className="flex items-center gap-3">
+                {[
+                  { bg: 'bg-white', text: 'text-slate-800' },
+                  { bg: 'bg-amber-400', text: 'text-slate-900' },
+                  { bg: 'bg-rose-600', text: 'text-white' },
+                  { bg: 'bg-emerald-500', text: 'text-white' },
+                  { bg: 'bg-blue-600', text: 'text-white' },
+                  { bg: 'bg-slate-900', text: 'text-yellow-400' }
+                ].map((theme, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => { setBcBgColor(theme.bg); setBcTextColor(theme.text); }}
+                    className={`w-12 h-12 rounded-full border-2 shadow-sm flex items-center justify-center transition-all active:scale-90 ${theme.bg} ${bcBgColor === theme.bg ? 'border-sky-500 scale-110 ring-4 ring-sky-200' : 'border-slate-300 hover:scale-105'}`}
+                    title="切換色彩"
+                  >
+                    <span className={`text-xl font-black ${theme.text}`}>A</span>
+                  </button>
+                ))}
+              </div>
+            </div>
            
            <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar shrink">
                <div className="flex flex-col gap-2">
@@ -734,23 +757,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                     <button onClick={() => setBcAlign("text-right")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-right' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠右</button>
                   </div>
                 </div>
-                   <div className="space-y-4">
-                       <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">戰術色彩主題</label>
-                       <div className="flex flex-wrap gap-4">
-                           {[
-                             { bg: 'bg-white', text: 'text-slate-800' },
-                             { bg: 'bg-amber-400', text: 'text-slate-900' },
-                             { bg: 'bg-rose-600', text: 'text-white' },
-                             { bg: 'bg-emerald-500', text: 'text-white' },
-                             { bg: 'bg-blue-600', text: 'text-white' },
-                             { bg: 'bg-slate-900', text: 'text-yellow-400' }
-                           ].map((theme, i) => (
-                               <button key={i} onClick={() => { setBcBgColor(theme.bg); setBcTextColor(theme.text); }} className={`w-16 h-16 rounded-full border-4 shadow-md flex items-center justify-center transition-all active:scale-90 ${theme.bg} ${bcBgColor === theme.bg ? 'border-sky-400 scale-110 ring-4 ring-sky-200' : (theme.bg === 'bg-white' ? 'border-slate-200 hover:border-slate-400 hover:scale-105' : 'border-white hover:border-slate-300 hover:scale-105')}`} title="套用主題">
-                                 <span className={`text-2xl font-black ${theme.text}`}>A</span>
-                               </button>
-                           ))}
-                       </div>
-                   </div>
+                   
                </div>
            </div>
            
