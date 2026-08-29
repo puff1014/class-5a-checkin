@@ -531,7 +531,12 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
     await setDoc(doc(db, attColName, activeStudent.id), {
-      name: activeStudent.name, status, completedTasks: selectedTasks, checkinTime: attendance[activeStudent.id]?.checkinTime || nowTime, lastActionTime: nowTime, timestamp: serverTimestamp()
+      name: activeStudent.name,
+      status,
+      completedTasks: selectedTasks || {},
+      checkinTime: attendance[activeStudent.id]?.checkinTime || nowTime,
+      lastActionTime: nowTime,
+      timestamp: serverTimestamp()
     }, { merge: true });
     setActiveStudent(null);
   };
@@ -911,9 +916,9 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
             <div className="flex items-center gap-3">
               <button onClick={() => handleDeleteDate(formatDate(viewDate))} className="p-3 bg-rose-100 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="刪除當前日期"><Trash2 size={32}/></button>
               <div className="flex bg-white p-1.5 rounded-2xl items-center shadow-inner border border-sky-100">
-                <button onClick={() => { setViewDate(new Date(viewDate.setDate(viewDate.getDate() - 1))); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
-                <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
-                <button onClick={() => { setViewDate(new Date(viewDate.setDate(viewDate.getDate() + 1))); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
+                <button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
+<span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
+<button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
               </div>
               <button onClick={async () => { if (!user || !db) return; const dateKey = formatDate(viewDate); const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`; const annColName = `${prefix}announcements`; if (!recordedDates.includes(dateKey)) { setRecordedDates(prev => [...prev, dateKey].sort()); } await setDoc(doc(db, annColName, dateKey), { date: dateKey, items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] }, { merge: true }); setViewDate(new Date(viewDate)); setIsEditing(false); }} className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="在此日期新增任務"><Plus size={32}/></button>
               <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
