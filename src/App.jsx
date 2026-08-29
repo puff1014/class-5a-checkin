@@ -1060,8 +1060,10 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                       date: dateKey
                     }, { merge: true });
                   } else {
-                    setIsEditing(true);
-                  }
+                      const currentText = displayItems.map(item => typeof item === 'string' ? item : item.text).join('\n');
+                      setAnnouncementText(currentText);
+                      setIsEditing(true);
+                    }
                 }}
                   className="bg-emerald-500 hover:bg-emerald-400 px-8 py-3 rounded-2xl font-black text-2xl shadow-lg transition-transform active:scale-95 text-white"
                 >
