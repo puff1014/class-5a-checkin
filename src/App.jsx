@@ -161,28 +161,34 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         )}
 
         {step === 2 && selectedQuadrant && (
-          <div className={`h-full rounded-[3.5rem] ${selectedQuadrant.color} p-12 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 border-b-[20px] border-black/10`}>
-            <div className="flex justify-between items-center mb-10 shrink-0">
-              <button onClick={() => setStep(1)} className="flex items-center gap-3 bg-white/20 hover:bg-white/30 text-white px-10 py-6 rounded-full text-3xl font-black transition-all active:scale-90 shadow-lg"><ArrowLeft className="w-10 h-10" /> 返回</button>
-              <h2 className="text-5xl font-black text-white tracking-tighter">哪一個詞彙最像現在的你？</h2>
-              <div className="w-40"></div>
-            </div>
-            <div className="grid grid-cols-5 gap-3 flex-grow overflow-y-auto custom-scrollbar p-2">
-              {selectedQuadrant.words.map((word) => {
-                const [zh, en] = word.split('\n');
-                return (
-                  <button 
-                    key={word} 
-                    onClick={() => selectWord(word)} 
-                    className="bg-white/15 hover:bg-white/35 border-2 border-white/30 text-white rounded-2xl py-3 px-2 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm min-h-[85px]"
-                  >
-                    <span className="text-2xl font-black leading-tight tracking-wide">{zh}</span>
-                    <span className="text-xs font-bold opacity-80 uppercase tracking-wider mt-1">{en}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <div className={`h-full rounded-[3.5rem] ${selectedQuadrant.color} p-6 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 border-b-[20px] border-black/10 overflow-hidden`}>
+      <div className="flex justify-between items-center mb-3 shrink-0 px-2">
+        <button onClick={() => setStep(1)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-6 py-2.5 rounded-full text-2xl font-black transition-all active:scale-90 shadow-md">
+          <ArrowLeft size={28} /> 返回
+        </button>
+        <h2 className="text-4xl font-black text-white tracking-tighter">哪一個詞彙最像現在的你？</h2>
+        <div className="w-24"></div>
+      </div>
+      <div className="grid grid-cols-5 grid-rows-5 gap-3 flex-1 w-full min-h-0">
+        {selectedQuadrant.words.map((word) => {
+          const [zh, en] = word.split('\n');
+          return (
+            <button
+              key={word}
+              onClick={() => selectWord(word)}
+              className="bg-white/15 hover:bg-white/35 border-2 border-white/30 text-white rounded-2xl p-1 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm h-full w-full"
+            >
+              <span className={`font-black leading-tight tracking-wide ${zh.length >= 4 ? 'text-3xl' : 'text-4xl'}`}>
+                {zh}
+              </span>
+              <span className="text-sm font-black opacity-85 uppercase tracking-wider mt-0.5">
+                {en}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
         )}
 
         {step === 3 && selectedQuadrant && (
