@@ -1079,7 +1079,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
           )}
           <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 shadow-inner relative z-10 backdrop-blur-sm border border-white/5 overflow-y-auto">
             {isEditing ? (
-              <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
+              <textarea value={announcementText || (displayItems || []).map(i => typeof i === 'string' ? i : i?.text || '').filter(Boolean).join('\n')} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
             ) : (
               <div 
                 style={{ 
