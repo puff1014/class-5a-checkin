@@ -42,7 +42,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       title: '高電力 / 起伏心情',
       description: '腦袋轉個不停，身體感覺緊繃',
       icon: <Zap className="w-20 h-20" />,
-      words: ['焦慮', '憤怒', '煩躁', '委屈', '壓力', '緊張'],
+      words: [
+        '暴怒\nEnraged', '驚慌失措\nPanicked', '備感壓力\nStressful', '緊張不安\nJittery', '震驚\nShocked',
+        '憤怒\nLivid', '氣沖沖\nFurious', '沮喪\nFrustrated', '神經緊繃\nTense', '錯愕\nStunned',
+        '火冒三丈\nFuming', '受到驚嚇\nAnxious', '生氣\nAngry', '緊張\nNervous', '坐立難安\nRestless',
+        '焦慮\nAnxious', '憂慮不安\nApprehensive', '擔心\nWorried', '被激怒\nIrritated', '被惹惱\nAnnoyed',
+        '反感\nRepulsed', '困擾\nTroubled', '在意\nConcerned', '忐忑不安\nUneasy', '不太高興\nPeeved'
+      ],
       guides: [ '閉上眼，慢慢從 5 倒數到 1。', '把手握緊再放鬆，感受壓力的釋放。', '慢慢喝一口水，讓大腦冷卻一下。', '用力聳起肩膀，然後瞬間放掉。', '深呼吸一次，感覺緊繃隨著吐氣慢慢散開。' ],
       color: 'bg-red-500', hover: 'hover:bg-red-600', text: 'text-white'
     },
@@ -53,7 +59,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       title: '高電力 / 陽光心情',
       description: '充滿動力、躍躍欲試',
       icon: <Sun className="w-20 h-20" />,
-      words: ['興奮', '期待', '自信', '好奇', '熱忱', '活力'],
+      words: [
+        '驚喜\nSurprised', '振奮\nUpbeat', '歡慶\nFestive', '心花怒放\nExhilarated', '欣喜若狂\nEcstatic',
+        '亢奮\nHyper', '愉悅\nCheerful', '有動力\nMotivated', '受到啟發\nInspired', '興高采烈\nElated',
+        '精力充沛\nEnergized', '生氣勃勃\nLively', '興奮\nExcited', '樂觀\nOptimistic', '熱情洋溢\nEnthusiastic',
+        '開心\nPleased', '集中\nFocused', '快樂\nHappy', '驕傲\nProud', '興奮激動\nThrilled',
+        '令人愉悅\nPleasant', '欣喜\nJoyful', '有希望\nHopeful', '好玩\nPlayful', '幸福\nBlissful'
+      ],
       guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '輕輕握一下拳頭，感受體內飽滿的行動力。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
       color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', text: 'text-white'
     },
@@ -64,7 +76,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       title: '低電力 / 起伏心情',
       description: '電力較低、悶悶的',
       icon: <Cloud className="w-20 h-20" />,
-      words: ['疲倦', '沮喪', '孤單', '無力', '失落', '困惑'],
+      words: [
+        '厭惡\nDisgusted', '死氣沉沉\nGlum', '失望\nDisappointed', '低落\nDown', '提不起勁\nApathetic',
+        '悲觀\nPessimistic', '鬱鬱寡歡\nMorose', '洩氣\nDiscouraged', '難過\nSad', '無聊\nBored',
+        '疏離\nAlienated', '悲慘\nMiserable', '孤單\nLonely', '沮喪\nDisheartened', '疲累\nTired',
+        '意志消沉\nDespondent', '抑鬱\nDepressed', '悶悶不樂\nSullen', '精疲力竭\nExhausted', '疲勞\nFatigued',
+        '絕望\nDespairing', '無望\nHopeless', '孤寂\nDesolate', '疲憊不堪\nSpent', '枯竭\nDrained'
+      ],
       guides: [ '站起來稍微伸展一下，讓電力回升。', '挺起胸膛，做一個大大的深呼吸。', '慢慢轉動一下脖子，釋放僵硬感。', '先完成一件最簡單的小事，找回節奏。', '雙手互搓 5 秒，感受手心的溫暖。' ],
       color: 'bg-blue-500', hover: 'hover:bg-blue-600', text: 'text-white'
     },
@@ -75,7 +93,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       title: '低電力 / 陽光心情',
       description: '心情平穩、安靜放鬆',
       icon: <Leaf className="w-20 h-20" />,
-      words: ['放鬆', '滿足', '安心', '悠閒', '平靜', '自在'],
+      words: [
+        '自在\nAt Ease', '隨和\nEasygoing', '知足\nContent', '充滿愛\nLoving', '心滿意足\nFulfilled',
+        '平靜\nCalm', '安全\nSecure', '滿意\nSatisfied', '滿懷感激\nGrateful', '感動\nTouched',
+        '放鬆\nRelaxed', '冷靜\nChill', '寧靜\nRestful', '有福氣\nBlessed', '平衡\nBalanced',
+        '柔和\nMellow', '沉思\nThoughtful', '平和\nPeaceful', '舒服\nComfortable', '無憂無慮\nCarefree',
+        '昏昏欲睡\nSleepy', '安於現狀\nComplacent', '恬淡平靜\nTranquil', '舒適\nCozy', '安詳\nSerene'
+      ],
       guides: [ '雙手平放桌面，感受掌心的穩定。', '調整坐姿，讓身體感覺更紮實。', '閉上眼，給自己數三下深呼吸的時間。', '整理一下桌面，讓思緒跟著變整齊。', '用平穩的節奏，開啟今日的任務。' ],
       color: 'bg-green-500', hover: 'hover:bg-green-600', text: 'text-white'
     }
@@ -143,10 +167,20 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
               <h2 className="text-5xl font-black text-white tracking-tighter">哪一個詞彙最像現在的你？</h2>
               <div className="w-40"></div>
             </div>
-            <div className="grid grid-cols-3 gap-8 flex-grow">
-              {selectedQuadrant.words.map((word) => (
-                <button key={word} onClick={() => selectWord(word)} className="bg-white/10 hover:bg-white/40 border-4 border-white/20 text-white rounded-[3rem] text-7xl font-black backdrop-blur-xl transition-all active:scale-95 shadow-inner flex items-center justify-center">{word}</button>
-              ))}
+            <div className="grid grid-cols-5 gap-3 flex-grow overflow-y-auto custom-scrollbar p-2">
+              {selectedQuadrant.words.map((word) => {
+                const [zh, en] = word.split('\n');
+                return (
+                  <button 
+                    key={word} 
+                    onClick={() => selectWord(word)} 
+                    className="bg-white/15 hover:bg-white/35 border-2 border-white/30 text-white rounded-2xl py-3 px-2 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm min-h-[85px]"
+                  >
+                    <span className="text-2xl font-black leading-tight tracking-wide">{zh}</span>
+                    <span className="text-xs font-bold opacity-80 uppercase tracking-wider mt-1">{en}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -154,7 +188,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         {step === 3 && selectedQuadrant && (
           <div className="h-full bg-white rounded-[3.5rem] shadow-2xl flex flex-col items-center justify-center p-12 border-8 border-slate-100 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="flex items-center gap-8 mb-10"><CheckCircle className="w-24 h-24 text-green-500" /><h2 className="text-7xl font-black text-slate-800 tracking-tighter">心情打卡成功</h2></div>
-            <p className="text-3xl text-slate-400 mb-10 font-bold uppercase tracking-[0.2em]">當前狀態：<span className="text-slate-900 underline underline-offset-[16px] decoration-[12px] decoration-blue-500">{selectedWord}</span></p>
+            <p className="text-3xl text-slate-400 mb-10 font-bold uppercase tracking-[0.2em]">當前狀態：<span className="text-slate-900 underline underline-offset-[16px] decoration-[12px] decoration-blue-500">{selectedWord?.replace('\n', ' ')}</span></p>
             <div className="bg-slate-50 px-12 py-12 rounded-[4rem] border-l-[24px] border-slate-800 max-w-6xl w-full shadow-inner text-center">
               <p className="text-2xl text-slate-400 mb-6 font-black uppercase tracking-widest">今日行動指令</p>
               <p className="text-5xl font-black text-slate-900 leading-none whitespace-nowrap overflow-hidden text-ellipsis">{dailyGuide}</p>
@@ -637,49 +671,49 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
            
            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                <div className="grid grid-cols-2 gap-6">
-                   {/* 陽光區 */}
-                   <div className="bg-yellow-50 rounded-[2rem] p-6 border-4 border-yellow-200 shadow-sm">
-                       <h3 className="text-3xl font-black text-yellow-700 mb-4 flex items-center gap-2"><Sun size={36}/> 高電力 / 陽光</h3>
-                       <div className="flex flex-wrap gap-3">
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').map(s => (
-                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-yellow-800 shadow-sm border border-yellow-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                           ))}
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').length === 0 && <span className="text-xl text-yellow-500/60 font-bold italic">目前無資料</span>}
-                       </div>
-                   </div>
-                   
-                   {/* 起伏區 (紅) */}
-                   <div className="bg-red-50 rounded-[2rem] p-6 border-4 border-red-200 shadow-sm">
-                       <h3 className="text-3xl font-black text-red-700 mb-4 flex items-center gap-2"><Zap size={36}/> 高電力 / 起伏</h3>
-                       <div className="flex flex-wrap gap-3">
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').map(s => (
-                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-red-800 shadow-sm border border-red-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                           ))}
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').length === 0 && <span className="text-xl text-red-500/60 font-bold italic">目前無資料</span>}
-                       </div>
-                   </div>
+                   {/* 1. 左上：起伏區 (紅) */}
+              <div className="bg-red-50 rounded-[2rem] p-6 border-4 border-red-200 shadow-sm">
+                <h3 className="text-3xl font-black text-red-700 mb-4 flex items-center gap-2"><Zap size={36}/> 高電力 / 起伏</h3>
+                <div className="flex flex-wrap gap-3">
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').map(s => (
+                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-red-800 shadow-sm border border-red-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                  ))}
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').length === 0 && <span className="text-xl text-red-500/60 font-bold italic">目前無資料</span>}
+                </div>
+              </div>
 
-                   {/* 穩定區 (綠) */}
-                   <div className="bg-green-50 rounded-[2rem] p-6 border-4 border-green-200 shadow-sm">
-                       <h3 className="text-3xl font-black text-green-700 mb-4 flex items-center gap-2"><Leaf size={36}/> 低電力 / 陽光</h3>
-                       <div className="flex flex-wrap gap-3">
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').map(s => (
-                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-green-800 shadow-sm border border-green-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                           ))}
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').length === 0 && <span className="text-xl text-green-500/60 font-bold italic">目前無資料</span>}
-                       </div>
-                   </div>
+              {/* 2. 右上：陽光區 (黃) */}
+              <div className="bg-yellow-50 rounded-[2rem] p-6 border-4 border-yellow-200 shadow-sm">
+                <h3 className="text-3xl font-black text-yellow-700 mb-4 flex items-center gap-2"><Sun size={36}/> 高電力 / 陽光</h3>
+                <div className="flex flex-wrap gap-3">
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').map(s => (
+                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-yellow-800 shadow-sm border border-yellow-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                  ))}
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').length === 0 && <span className="text-xl text-yellow-500/60 font-bold italic">目前無資料</span>}
+                </div>
+              </div>
 
-                   {/* 沮喪區 (藍) */}
-                   <div className="bg-blue-50 rounded-[2rem] p-6 border-4 border-blue-200 shadow-sm">
-                       <h3 className="text-3xl font-black text-blue-700 mb-4 flex items-center gap-2"><Cloud size={36}/> 低電力 / 起伏</h3>
-                       <div className="flex flex-wrap gap-3">
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').map(s => (
-                               <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-blue-800 shadow-sm border border-blue-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                           ))}
-                           {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').length === 0 && <span className="text-xl text-blue-500/60 font-bold italic">目前無資料</span>}
-                       </div>
-                   </div>
+              {/* 3. 左下：沮喪區 (藍) */}
+              <div className="bg-blue-50 rounded-[2rem] p-6 border-4 border-blue-200 shadow-sm">
+                <h3 className="text-3xl font-black text-blue-700 mb-4 flex items-center gap-2"><Cloud size={36}/> 低電力 / 起伏</h3>
+                <div className="flex flex-wrap gap-3">
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').map(s => (
+                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-blue-800 shadow-sm border border-blue-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                  ))}
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').length === 0 && <span className="text-xl text-blue-500/60 font-bold italic">目前無資料</span>}
+                </div>
+              </div>
+
+              {/* 4. 右下：穩定區 (綠) */}
+              <div className="bg-green-50 rounded-[2rem] p-6 border-4 border-green-200 shadow-sm">
+                <h3 className="text-3xl font-black text-green-700 mb-4 flex items-center gap-2"><Leaf size={36}/> 低電力 / 陽光</h3>
+                <div className="flex flex-wrap gap-3">
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').map(s => (
+                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-green-800 shadow-sm border border-green-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                  ))}
+                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').length === 0 && <span className="text-xl text-green-500/60 font-bold italic">目前無資料</span>}
+                </div>
+              </div>
                </div>
                
                <div className="mt-6 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
