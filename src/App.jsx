@@ -347,6 +347,7 @@ const App = () => {
       const data = {};
       snap.forEach(d => data[d.id] = d.data());
       setAttendance(data);
+      setRefreshCounter(prev => prev + 1);
     });
 
     // 💡 核心修正：直接在記憶體中找上一天，不依賴複合查詢與索引
