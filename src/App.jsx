@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, query, where, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
-import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Activity, Radar, DownloadCloud } from 'lucide-react';
+import { getFirestore, collection, onSnapshot, doc, setDoc, serverTimestamp, getDocs, writeBatch, deleteField } from 'firebase/firestore';
+import { Ship, ScrollText, ChevronLeft, ChevronRight, XCircle, Clock, UserCheck, Plus, Minus, Trash2, LayoutDashboard, Calendar, Trophy, XOctagon, CheckCircle2, Smile, Lock, Unlock, ArrowUp, ArrowDown, Printer, UserMinus, Type, GripVertical, Edit3, AlertTriangle, History, CalendarDays, Anchor, X, Megaphone, BellRing, Cloud, Sun, Zap, Leaf, CheckCircle, ArrowLeft, BatteryFull, BatteryLow, Frown, Radar, DownloadCloud } from 'lucide-react';
 
-const APP_VERSION = "V22.0.4_Radar_&_Export_Edition";
-// 🚨 終極資安防禦：已透過 Google Cloud 設定 HTTP 網域白名單，此金鑰現已受實體隔離保護，可安全運行
+const APP_VERSION = "V22.0.5_Sync_Fixed_Edition";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
@@ -112,8 +111,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       }, 5000); 
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [step, onComplete]);
 
   const selectQuadrant = (q) => {
     setSelectedQuadrant(q);
@@ -162,33 +160,33 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
 
         {step === 2 && selectedQuadrant && (
           <div className={`h-full rounded-[3.5rem] ${selectedQuadrant.color} p-6 shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300 border-b-[20px] border-black/10 overflow-hidden`}>
-      <div className="flex justify-between items-center mb-3 shrink-0 px-2">
-        <button onClick={() => setStep(1)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-6 py-2.5 rounded-full text-2xl font-black transition-all active:scale-90 shadow-md">
-          <ArrowLeft size={28} /> 返回
-        </button>
-        <h2 className="text-4xl font-black text-white tracking-tighter">哪一個詞彙最像現在的你？</h2>
-        <div className="w-24"></div>
-      </div>
-      <div className="grid grid-cols-5 grid-rows-5 gap-3 flex-1 w-full min-h-0">
-        {selectedQuadrant.words.map((word) => {
-          const [zh, en] = word.split('\n');
-          return (
-            <button
-              key={word}
-              onClick={() => selectWord(word)}
-              className="bg-white/15 hover:bg-white/35 border-2 border-white/30 text-white rounded-2xl p-1 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm h-full w-full"
-            >
-              <span className={`font-black leading-tight tracking-wide ${zh.length >= 4 ? 'text-3xl' : 'text-4xl'}`}>
-                {zh}
-              </span>
-              <span className="text-sm font-black opacity-85 uppercase tracking-wider mt-0.5">
-                {en}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+            <div className="flex justify-between items-center mb-3 shrink-0 px-2">
+              <button onClick={() => setStep(1)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-6 py-2.5 rounded-full text-2xl font-black transition-all active:scale-90 shadow-md">
+                <ArrowLeft size={28} /> 返回
+              </button>
+              <h2 className="text-4xl font-black text-white tracking-tighter">哪一個詞彙最像現在的你？</h2>
+              <div className="w-24"></div>
+            </div>
+            <div className="grid grid-cols-5 grid-rows-5 gap-3 flex-1 w-full min-h-0">
+              {selectedQuadrant.words.map((word) => {
+                const [zh, en] = word.split('\n');
+                return (
+                  <button
+                    key={word}
+                    onClick={() => selectWord(word)}
+                    className="bg-white/15 hover:bg-white/35 border-2 border-white/30 text-white rounded-2xl p-1 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm h-full w-full"
+                  >
+                    <span className={`font-black leading-tight tracking-wide ${zh.length >= 4 ? 'text-3xl' : 'text-4xl'}`}>
+                      {zh}
+                    </span>
+                    <span className="text-sm font-black opacity-85 uppercase tracking-wider mt-0.5">
+                      {en}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {step === 3 && selectedQuadrant && (
@@ -204,15 +202,16 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
         )}
       </div>
     </div>
-      );
-}; //
- const App = () => {
- const [db, setDb] = useState(null);
- const [auth, setAuth] = useState(null);
- const [user, setUser] = useState(null);
- const [viewDate, setViewDate] = useState(new Date());
- 
- const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getCurrentAcademicYear());
+  );
+};
+
+const App = () => {
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [user, setUser] = useState(null);
+  const [viewDate, setViewDate] = useState(new Date());
+  
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getCurrentAcademicYear());
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const handleYearChange = (year) => {
@@ -225,53 +224,54 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       setReportEnd('2027-07-31');
     }
   };
- const [isEditing, setIsEditing] = useState(false);
- const [displayItems, setDisplayItems] = useState([]);
- const [announcementText, setAnnouncementText] = useState("");
- const [attendance, setAttendance] = useState({});
- const [activeStudent, setActiveStudent] = useState(null);
- const [viewOnlyStudent, setViewOnlyStudent] = useState(null);
- const [prevTasks, setPrevTasks] = useState([]);
- const [selectedTasks, setSelectedTasks] = useState({});
- const [fontSize, setFontSize] = useState(48);
- const [lineHeight, setLineHeight] = useState(1.1);
- const [useBiauKai, setUseBiauKai] = useState(false);
- const [recordedDates, setRecordedDates] = useState([]);
- const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
- 
- const [reportStart, setReportStart] = useState(() => {
-   const d = new Date();
-   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
- });
- const [reportEnd, setReportEnd] = useState(() => formatDate(new Date()));
- 
- const [monthlyStats, setMonthlyStats] = useState({});
- const [w1, setW1] = useState(25);
- const [w2, setW2] = useState(25);
- const [refreshCounter, setRefreshCounter] = useState(0);
- const [showCalendarPicker, setShowCalendarPicker] = useState(false);
- const [pickerDate, setPickerDate] = useState(new Date());
 
- const [showLoginModal, setShowLoginModal] = useState(false);
- const [loginEmail, setLoginEmail] = useState('');
- const [loginPwd, setLoginPwd] = useState('');
- const [loginError, setLoginError] = useState('');
- const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [displayItems, setDisplayItems] = useState([]);
+  const [announcementText, setAnnouncementText] = useState("");
+  const [attendance, setAttendance] = useState({});
+  const [activeStudent, setActiveStudent] = useState(null);
+  const [viewOnlyStudent, setViewOnlyStudent] = useState(null);
+  const [prevTasks, setPrevTasks] = useState([]);
+  const [selectedTasks, setSelectedTasks] = useState({});
+  const [fontSize, setFontSize] = useState(48);
+  const [lineHeight, setLineHeight] = useState(1.1);
+  const [useBiauKai, setUseBiauKai] = useState(false);
+  const [recordedDates, setRecordedDates] = useState([]);
+  const [activeStatMonth, setActiveStatMonth] = useState(`${new Date().getMonth() + 1}月`);
+  
+  const [reportStart, setReportStart] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [reportEnd, setReportEnd] = useState(() => formatDate(new Date()));
+  
+  const [monthlyStats, setMonthlyStats] = useState({});
+  const [w1, setW1] = useState(25);
+  const [w2, setW2] = useState(25);
+  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
 
- const [broadcastData, setBroadcastData] = useState(null);
- const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState(null);
- const [showBroadcastEditor, setShowBroadcastEditor] = useState(false);
- const [broadcastInput, setBroadcastInput] = useState("");
- const [bcBgColor, setBcBgColor] = useState("bg-white");
- const [bcTextColor, setBcTextColor] = useState("text-slate-800");
- const [bcFontSize, setBcFontSize] = useState(80);
- const [bcAlign, setBcAlign] = useState("text-center");  
- const [bcBiauKai, setBcBiauKai] = useState(false);
- 
- const [moodModalStudent, setMoodModalStudent] = useState(null);
- const [showMoodRadar, setShowMoodRadar] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPwd, setLoginPwd] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
- const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
+  const [broadcastData, setBroadcastData] = useState(null);
+  const [dismissedBroadcastTime, setDismissedBroadcastTime] = useState(null);
+  const [showBroadcastEditor, setShowBroadcastEditor] = useState(false);
+  const [broadcastInput, setBroadcastInput] = useState("");
+  const [bcBgColor, setBcBgColor] = useState("bg-white");
+  const [bcTextColor, setBcTextColor] = useState("text-slate-800");
+  const [bcFontSize, setBcFontSize] = useState(80);
+  const [bcAlign, setBcAlign] = useState("text-center");  
+  const [bcBiauKai, setBcBiauKai] = useState(false);
+  
+  const [moodModalStudent, setMoodModalStudent] = useState(null);
+  const [showMoodRadar, setShowMoodRadar] = useState(false);
+
+  const highlighterColors = ['transparent', '#C0392B', '#16A085', '#2980B9', '#8E44AD'];
 
   const cycleHighlighter = async (index) => {
     if (!user) return;
@@ -284,19 +284,19 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     newItems[index] = { text, colorIdx: nextIdx };
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
-    await setDoc(doc(db, annColName, dateKey), { items: newItems }, { merge: true });
+    await setDoc(doc(db, annColName, dateKey), { items: newItems, date: dateKey }, { merge: true });
   };
 
- useEffect(() => {
-   const app = initializeApp(firebaseConfig);
-   setDb(getFirestore(app));
-   setAuth(getAuth(app));
-   onAuthStateChanged(getAuth(app), (u) => setUser(u));
-   const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-   return () => clearInterval(timer);
- }, []);
+  useEffect(() => {
+    const app = initializeApp(firebaseConfig);
+    setDb(getFirestore(app));
+    setAuth(getAuth(app));
+    onAuthStateChanged(getAuth(app), (u) => setUser(u));
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
- useEffect(() => {
+  useEffect(() => {
     if (!db) return;
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
@@ -318,14 +318,13 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     return () => unsubscribeBroadcast();
   }, [db]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!db) return;
     const dateKey = formatDate(viewDate);
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
     const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
 
-    // 💡 切換學年度時先清空畫面，避免殘留舊資料
     setDisplayItems([]);
     setAnnouncementText("");
     setAttendance({});
@@ -350,182 +349,203 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       setAttendance(data);
     });
 
+    // 💡 核心修正：直接在記憶體中找上一天，不依賴複合查詢與索引
     const fetchPrev = async () => {
-      const q = query(collection(db, annColName), where("date", "<", dateKey), orderBy("date", "desc"), limit(1));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const rawItems = snap.docs[0].data().items || [];
-        const filteredTasks = rawItems.filter(t => {
-          const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
-          return !text.startsWith('※') && !text.startsWith(' ');
-        });
-        setPrevTasks(filteredTasks);
-      } else {
+      try {
+        const snap = await getDocs(collection(db, annColName));
+        const allDocs = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(d => d.id < dateKey)
+          .sort((a, b) => b.id.localeCompare(a.id));
+
+        if (allDocs.length > 0) {
+          const rawItems = allDocs[0].items || [];
+          const filteredTasks = rawItems.filter(t => {
+            const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
+            return !text.startsWith('※') && !text.startsWith(' ');
+          });
+          setPrevTasks(filteredTasks);
+        } else {
+          setPrevTasks([]);
+        }
+      } catch (err) {
+        console.error("fetchPrev error:", err);
         setPrevTasks([]);
       }
     };
     fetchPrev();
 
-    // 💡 關鍵：切換學年度時徹底斷開舊監聽器，防止被舊學年資料覆蓋
     return () => {
       unsubAnn();
       unsubAtt();
     };
   }, [db, viewDate, isEditing, selectedAcademicYear]);
- const getAutoAttStatus = (id, time) => {
-   if (!time) return 'absent';
-   const [h, m, s] = time.split(':').map(Number);
-   const totalS = h * 3600 + m * 60 + (s || 0);
-   if (SPECIAL_IDS.includes(id)) return totalS >= 8 * 3600 + 10 * 60 + 30 ? 'late' : 'on-time';
-   return totalS >= 7 * 3600 + 40 * 60 + 1 ? 'late' : 'on-time';
- };
 
- const getFinalAttStatus = (id, attData) => {
-   if (!attData) return 'absent';
-   if (attData.manualAtt) return attData.manualAtt; 
-   if (attData.status === 'sick') return 'sick';
-   if (attData.status === 'personal') return 'personal';
-   return getAutoAttStatus(id, attData.checkinTime);
- };
+  const getAutoAttStatus = (id, time) => {
+    if (!time) return 'absent';
+    const [h, m, s] = time.split(':').map(Number);
+    const totalS = h * 3600 + m * 60 + (s || 0);
+    if (SPECIAL_IDS.includes(id)) return totalS >= 8 * 3600 + 10 * 60 + 30 ? 'late' : 'on-time';
+    return totalS >= 7 * 3600 + 40 * 60 + 1 ? 'late' : 'on-time';
+  };
 
- const isAutoTaskLate = (id, actionTime) => {
-   if (!actionTime) return false;
-   const [h, m, s] = actionTime.split(':').map(Number);
-   const totalS = h * 3600 + m * 60 + (s || 0);
-   if (SPECIAL_IDS.includes(id)) return totalS > 8 * 3600 + 15 * 60;
-   return totalS >= 7 * 3600 + 40 * 60 + 1;
- };
+  const getFinalAttStatus = (id, attData) => {
+    if (!attData) return 'absent';
+    if (attData.manualAtt) return attData.manualAtt; 
+    if (attData.status === 'sick') return 'sick';
+    if (attData.status === 'personal') return 'personal';
+    return getAutoAttStatus(id, attData.checkinTime);
+  };
 
- const getFinalTaskStatus = (id, originalTaskName, attData) => {
-   const cleanName = typeof originalTaskName === 'string' ? originalTaskName.trim() : (originalTaskName?.text?.trim() || "");
-   if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
-   const hw = attData?.completedTasks || {};
-   if (!hw[cleanName]) return 'missing';
-   if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
-   return 'done';
- };
+  const isAutoTaskLate = (id, actionTime) => {
+    if (!actionTime) return false;
+    const [h, m, s] = actionTime.split(':').map(Number);
+    const totalS = h * 3600 + m * 60 + (s || 0);
+    if (SPECIAL_IDS.includes(id)) return totalS > 8 * 3600 + 15 * 60;
+    return totalS >= 7 * 3600 + 40 * 60 + 1;
+  };
 
- useEffect(() => {
-   if (!db || recordedDates.length === 0) return;
-   let isMounted = true;
-   const fetchStats = async () => {
-     const targetDates = recordedDates.filter(d => d >= reportStart && d <= reportEnd);
-     const stats = {};
-     STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
-     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
-    const annColName = `${prefix}announcements`;
+  const getFinalTaskStatus = (id, originalTaskName, attData) => {
+    const cleanName = typeof originalTaskName === 'string' ? originalTaskName.trim() : (originalTaskName?.text?.trim() || "");
+    if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
+    const hw = attData?.completedTasks || {};
+    if (!hw[cleanName]) return 'missing';
+    if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
+    return 'done';
+  };
 
-    for (const dKey of targetDates) {
-      const attColName = prefix ? `${prefix}attendance_${dKey}` : `attendance_${dKey}`;
-      const attSnap = await getDocs(collection(db, attColName));
-      const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
-      const annSnap = await getDocs(query(collection(db, annColName), where("date", "<", dKey), orderBy("date", "desc"), limit(1)));
-       const rawDailyTasks = !annSnap.empty ? annSnap.docs[0].data().items : [];
-       const dailyTasks = rawDailyTasks.filter(t => {
-         const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
-         return !text.startsWith('※') && !text.startsWith(' ');
-       });
-       const isCurrentView = dKey === formatDate(viewDate);
-       STUDENTS.forEach(student => {
-         const sid = student.id; const d = (isCurrentView && attendance[sid]) ? attendance[sid] : attMap[sid];
-         if (!d) {
-           stats[sid].dailyRecords[dKey] = { att: 'absent', missingList: [], lateList: [], allDone: false };
-           if (dailyTasks.length > 0) {
-              stats[sid].missingDays++;
+  useEffect(() => {
+    if (!db || recordedDates.length === 0) return;
+    let isMounted = true;
+    const fetchStats = async () => {
+      const targetDates = recordedDates.filter(d => d >= reportStart && d <= reportEnd);
+      const stats = {};
+      STUDENTS.forEach(s => stats[s.id] = { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [], dailyRecords: {} });
+      const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+      const annColName = `${prefix}announcements`;
+
+      try {
+        const annSnapAll = await getDocs(collection(db, annColName));
+        const allAnnMap = {};
+        annSnapAll.forEach(doc => { allAnnMap[doc.id] = doc.data(); });
+        const allAnnDates = Object.keys(allAnnMap).sort();
+
+        for (const dKey of targetDates) {
+          const attColName = prefix ? `${prefix}attendance_${dKey}` : `attendance_${dKey}`;
+          const attSnap = await getDocs(collection(db, attColName));
+          const attMap = {}; attSnap.forEach(doc => { attMap[doc.id] = doc.data(); });
+
+          const prevDateKey = allAnnDates.filter(d => d < dKey).pop();
+          const rawDailyTasks = prevDateKey && allAnnMap[prevDateKey]?.items ? allAnnMap[prevDateKey].items : [];
+          const dailyTasks = rawDailyTasks.filter(t => {
+            const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
+            return !text.startsWith('※') && !text.startsWith(' ');
+          });
+          const isCurrentView = dKey === formatDate(viewDate);
+          STUDENTS.forEach(student => {
+            const sid = student.id; 
+            const d = (isCurrentView && attendance[sid]) ? attendance[sid] : attMap[sid];
+            if (!d) {
+              stats[sid].dailyRecords[dKey] = { att: 'absent', missingList: [], lateList: [], allDone: false };
+              if (dailyTasks.length > 0) {
+                stats[sid].missingDays++;
+                dailyTasks.forEach(t => {
+                  const tName = typeof t === 'string' ? t.trim() : t.text.trim();
+                  stats[sid].issues.push(`${dKey.slice(5)}: ${tName} (缺交)`);
+                  stats[sid].dailyRecords[dKey].missingList.push(tName);
+                });
+              } else { stats[sid].dailyRecords[dKey].allDone = true; }
+              return; 
+            }
+            const finalAtt = getFinalAttStatus(sid, d);
+            if (finalAtt === 'on-time') stats[sid].onTime++;
+            else if (finalAtt === 'late') stats[sid].late++;
+            else if (finalAtt === 'sick') stats[sid].sick++;
+            else if (finalAtt === 'personal') stats[sid].personal++;
+            
+            stats[sid].dailyRecords[dKey] = { att: finalAtt, missingList: [], lateList: [], allDone: false, mood: d.mood };
+            
+            if (dailyTasks.length > 0) {
+              let missingCount = 0; let lateCount = 0;
               dailyTasks.forEach(t => {
-                const tName = typeof t === 'string' ? t.trim() : t.text.trim();
-                stats[sid].issues.push(`${dKey.slice(5)}: ${tName} (缺交)`);
-                stats[sid].dailyRecords[dKey].missingList.push(tName);
+                const cleanTask = typeof t === 'string' ? t.trim() : t.text.trim();
+                const finalTask = getFinalTaskStatus(sid, cleanTask, d);
+                if (finalTask === 'missing') {
+                  missingCount++;
+                  stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (缺交)`);
+                  stats[sid].dailyRecords[dKey].missingList.push(cleanTask);
+                } else if (finalTask === 'late') {
+                  lateCount++;
+                  stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (遲交)`);
+                  stats[sid].dailyRecords[dKey].lateList.push(cleanTask);
+                }
               });
-           } else { stats[sid].dailyRecords[dKey].allDone = true; }
-           return; 
-         }
-         const finalAtt = getFinalAttStatus(sid, d);
-         if (finalAtt === 'on-time') stats[sid].onTime++;
-         else if (finalAtt === 'late') stats[sid].late++;
-         else if (finalAtt === 'sick') stats[sid].sick++;
-         else if (finalAtt === 'personal') stats[sid].personal++;
-         
-         stats[sid].dailyRecords[dKey] = { att: finalAtt, missingList: [], lateList: [], allDone: false, mood: d.mood };
-         
-         if (dailyTasks.length > 0) {
-           let missingCount = 0; let lateCount = 0;
-           dailyTasks.forEach(t => {
-              const cleanTask = typeof t === 'string' ? t.trim() : t.text.trim();
-              const finalTask = getFinalTaskStatus(sid, cleanTask, d);
-              if (finalTask === 'missing') {
-                missingCount++;
-                stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (缺交)`);
-                stats[sid].dailyRecords[dKey].missingList.push(cleanTask);
-              } else if (finalTask === 'late') {
-                lateCount++;
-                stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (遲交)`);
-                stats[sid].dailyRecords[dKey].lateList.push(cleanTask);
-              }
-           });
-           if (missingCount > 0) stats[sid].missingDays++;
-           else if (lateCount > 0) stats[sid].lateDays++;
-           else { stats[sid].fullDoneDays++; stats[sid].dailyRecords[dKey].allDone = true; }
-         } else { stats[sid].dailyRecords[dKey].allDone = true; }
-       });
-     }
-     if (isMounted) setMonthlyStats(stats);
-   };
-   fetchStats(); return () => { isMounted = false; };
- }, [db, reportStart, reportEnd, recordedDates, attendance, viewDate, refreshCounter, selectedAcademicYear]);
+              if (missingCount > 0) stats[sid].missingDays++;
+              else if (lateCount > 0) stats[sid].lateDays++;
+              else { stats[sid].fullDoneDays++; stats[sid].dailyRecords[dKey].allDone = true; }
+            } else { stats[sid].dailyRecords[dKey].allDone = true; }
+          });
+        }
+        if (isMounted) setMonthlyStats(stats);
+      } catch (e) {
+        console.error("fetchStats error:", e);
+      }
+    };
+    fetchStats(); return () => { isMounted = false; };
+  }, [db, reportStart, reportEnd, recordedDates, attendance, viewDate, refreshCounter, selectedAcademicYear]);
 
- const cycleManualAtt = async (studentId) => {
-   if (!user) return;
-   const dateKey = formatDate(viewDate);
-   const d = attendance[studentId] || {};
-   const current = d.manualAtt || 'auto';
-   const cycle = ['auto', 'on-time', 'late', 'sick', 'personal'];
-   const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-   const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+  const cycleManualAtt = async (studentId) => {
+    if (!user) return;
+    const dateKey = formatDate(viewDate);
+    const d = attendance[studentId] || {};
+    const current = d.manualAtt || 'auto';
+    const cycle = ['auto', 'on-time', 'late', 'sick', 'personal'];
+    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
     await setDoc(doc(db, attColName, studentId), { manualAtt: next === 'auto' ? deleteField() : next }, { merge: true });
-   setRefreshCounter(prev => prev + 1);
- };
+    setRefreshCounter(prev => prev + 1);
+  };
 
- const cycleManualTask = async (studentId, taskName) => {
-   if (!user) return;
-   const dateKey = formatDate(viewDate);
-   const cleanT = taskName.trim();
-   const d = attendance[studentId] || {};
-   const currentManualTasks = d.manualTasks || {};
-   const currentStatus = currentManualTasks[cleanT] || 'auto';
-   const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
-   const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
-   const updatedTasks = { ...currentManualTasks };
-   if (nextStatus === 'auto') { updatedTasks[cleanT] = null; }
-   else { updatedTasks[cleanT] = nextStatus; }
-   const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
-  const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
-  await setDoc(doc(db, attColName, studentId), { manualTasks: updatedTasks }, { merge: true });
-   setRefreshCounter(prev => prev + 1);
- };
+  const cycleManualTask = async (studentId, taskName) => {
+    if (!user) return;
+    const dateKey = formatDate(viewDate);
+    const cleanT = taskName.trim();
+    const d = attendance[studentId] || {};
+    const currentManualTasks = d.manualTasks || {};
+    const currentStatus = currentManualTasks[cleanT] || 'auto';
+    const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
+    const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
+    const updatedTasks = { ...currentManualTasks };
+    if (nextStatus === 'auto') { updatedTasks[cleanT] = null; }
+    else { updatedTasks[cleanT] = nextStatus; }
+    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+    const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+    await setDoc(doc(db, attColName, studentId), { manualTasks: updatedTasks }, { merge: true });
+    setRefreshCounter(prev => prev + 1);
+  };
 
- const getStatusDisplay = (status, type) => {
-   if (type === 'att') {
-     switch(status) {
-       case 'on-time': return <span className="bg-emerald-100 text-emerald-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-emerald-200">準時</span>;
-       case 'late': return <span className="bg-pink-100 text-pink-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-pink-200">遲到</span>;
-       case 'sick': return <span className="bg-purple-100 text-purple-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-purple-200">病假</span>;
-       case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-orange-200">事假</span>;
-       default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest">未簽到</span>;
-     }
-   } else {
-     switch(status) {
-       case 'done': return <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl border-2 border-blue-300 font-bold">齊全</span>;
-       case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border-2 border-amber-300 font-bold">遲交</span>;
-       case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border-2 border-rose-300 font-bold">缺交</span>;
-       case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border-2 border-slate-400 font-bold">免交</span>;
-       default: return <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-xl">未知</span>;
-     }
-   }
- };
+  const getStatusDisplay = (status, type) => {
+    if (type === 'att') {
+      switch(status) {
+        case 'on-time': return <span className="bg-emerald-100 text-emerald-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-emerald-200">準時</span>;
+        case 'late': return <span className="bg-pink-100 text-pink-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-pink-200">遲到</span>;
+        case 'sick': return <span className="bg-purple-100 text-purple-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-purple-200">病假</span>;
+        case 'personal': return <span className="bg-orange-100 text-orange-800 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest border-2 border-orange-200">事假</span>;
+        default: return <span className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-5xl font-black shadow-sm tracking-widest">未簽到</span>;
+      }
+    } else {
+      switch(status) {
+        case 'done': return <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl border-2 border-blue-300 font-bold">齊全</span>;
+        case 'late': return <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl border-2 border-amber-300 font-bold">遲交</span>;
+        case 'missing': return <span className="bg-rose-100 text-rose-800 px-4 py-2 rounded-xl border-2 border-rose-300 font-bold">缺交</span>;
+        case 'exempt': return <span className="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl border-2 border-slate-400 font-bold">免交</span>;
+        default: return <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-xl">未知</span>;
+      }
+    }
+  };
 
- const submitCheckin = async (status = 'present') => {
+  const submitCheckin = async (status = 'present') => {
     const dateKey = formatDate(viewDate);
     const nowTime = new Date().toLocaleTimeString('zh-TW', { hour12: false });
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
@@ -540,40 +560,41 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     }, { merge: true });
     setActiveStudent(null);
   };
- const handleDeleteDate = async (dateStr) => {
-  if (!user) return;
-  if (window.confirm(`確定要刪除 ${dateStr} 的紀錄與標籤嗎？`)) {
-    const batch = writeBatch(db);
-    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
-    const annColName = `${prefix}announcements`;
-    const attColName = prefix ? `${prefix}attendance_${dateStr}` : `attendance_${dateStr}`;
-    batch.delete(doc(db, annColName, dateStr));
-    const attDocs = await getDocs(collection(db, attColName));
-    attDocs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    if (dateStr === formatDate(viewDate)) { setDisplayItems([]); setAnnouncementText(""); setAttendance({}); }
-  }
-};
- const handleLogin = async (e) => {
-   e.preventDefault();
-   setIsLoggingIn(true);
-   setLoginError('');
-   try {
-     await signInWithEmailAndPassword(auth, loginEmail, loginPwd);
-     setShowLoginModal(false);
-     setLoginEmail('');
-     setLoginPwd('');
-   } catch (error) {
-     console.error("Login failed:", error);
-     setLoginError("登入失敗，請確認帳號密碼是否正確。");
-   } finally {
-     setIsLoggingIn(false);
-   }
- };
 
- // 戰術匯出引擎 (CSV Export)
- const handleExportCSV = () => {
-    let csvContent = '\uFEFF'; // BOM for Excel UTF-8
+  const handleDeleteDate = async (dateStr) => {
+    if (!user) return;
+    if (window.confirm(`確定要刪除 ${dateStr} 的紀錄與標籤嗎？`)) {
+      const batch = writeBatch(db);
+      const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+      const annColName = `${prefix}announcements`;
+      const attColName = prefix ? `${prefix}attendance_${dateStr}` : `attendance_${dateStr}`;
+      batch.delete(doc(db, annColName, dateStr));
+      const attDocs = await getDocs(collection(db, attColName));
+      attDocs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      if (dateStr === formatDate(viewDate)) { setDisplayItems([]); setAnnouncementText(""); setAttendance({}); }
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPwd);
+      setShowLoginModal(false);
+      setLoginEmail('');
+      setLoginPwd('');
+    } catch (error) {
+      console.error("Login failed:", error);
+      setLoginError("登入失敗，請確認帳號密碼是否正確。");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    let csvContent = '\uFEFF';
     csvContent += `${selectedAcademicYear === '114' ? '五年甲班' : '六年甲班'} 學習表現統計表 (${reportStart} 至 ${reportEnd})\n\n`;
     csvContent += '座號,姓名,準時天數,遲到天數,缺席天數,作業齊全天數,作業遲交天數,作業缺交天數,需補交明細\n';
 
@@ -594,20 +615,20 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
     document.body.removeChild(link);
   };
 
- const isPublished = recordedDates.includes(formatDate(viewDate));
+  const isPublished = recordedDates.includes(formatDate(viewDate));
 
- return (
-   <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
-     
-     {moodModalStudent && (
+  return (
+    <div className="min-h-screen bg-[#F0F9FF] flex flex-col font-sans select-text overflow-x-hidden">
+      
+      {moodModalStudent && (
         <MoodStation 
           student={moodModalStudent} 
           onSave={async (moodResult) => {
               const dateKey = formatDate(viewDate);
               if (db) {
                   const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
-const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
-await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { merge: true });
+                  const attColName = prefix ? `${prefix}attendance_${dateKey}` : `attendance_${dateKey}`;
+                  await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { merge: true });
               }
           }}
           onComplete={() => {
@@ -623,129 +644,122 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
               setActiveStudent(s);
           }}
         />
-     )}
+      )}
 
-     {/* 防護全域廣播接收視窗避免 React 當機白畫面 */}
-     {(() => {
-         let isBroadcastVisible = false;
-         let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false, textAlign: 'text-center' };
-         let broadcastMessage = "";
+      {(() => {
+          let isBroadcastVisible = false;
+          let broadcastSettings = { bgColor: 'bg-amber-400', textColor: 'text-slate-900', fontSize: 80, biauKai: false, textAlign: 'text-center' };
+          let broadcastMessage = "";
 
-         if (broadcastData && broadcastData.active && broadcastData.message) {
-             const currentBroadcastId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
-             if (currentBroadcastId !== dismissedBroadcastTime) {
-                 isBroadcastVisible = true;
-                 broadcastSettings = broadcastData.settings || broadcastSettings;
-                 broadcastMessage = broadcastData.message;
-             }
-         }
-         
-         if (!isBroadcastVisible) return null;
-         
-         return (
-           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[9999] flex items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in duration-300 print:hidden">
-             <div className={`${broadcastSettings.bgColor} rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] p-8 md:p-16 w-full max-w-[95vw] min-h-[80vh] border-[16px] border-white/20 flex flex-col items-center justify-center text-center relative`}>
-               <div className="absolute -top-20 bg-white/20 backdrop-blur-md p-6 rounded-full border-8 border-white/30 shadow-xl animate-bounce">
-                 <BellRing size={80} className={broadcastSettings.textColor}/>
-               </div>
-               <div className="flex-1 flex items-center justify-center w-full py-12">
-                 <p 
-                    style={{ 
-                        fontSize: `${broadcastSettings.fontSize}px`, 
-                        fontFamily: broadcastSettings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
-                    }} 
-                    className={`font-black ${broadcastSettings.textColor} ${broadcastSettings.textAlign || 'text-center'} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
-                 >
+          if (broadcastData && broadcastData.active && broadcastData.message) {
+              const currentBroadcastId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
+              if (currentBroadcastId !== dismissedBroadcastTime) {
+                  isBroadcastVisible = true;
+                  broadcastSettings = broadcastData.settings || broadcastSettings;
+                  broadcastMessage = broadcastData.message;
+              }
+          }
+          
+          if (!isBroadcastVisible) return null;
+          
+          return (
+            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[9999] flex items-center justify-center p-4 md:p-8 animate-in fade-in zoom-in duration-300 print:hidden">
+              <div className={`${broadcastSettings.bgColor} rounded-[4rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] p-8 md:p-16 w-full max-w-[95vw] min-h-[80vh] border-[16px] border-white/20 flex flex-col items-center justify-center text-center relative`}>
+                <div className="absolute -top-20 bg-white/20 backdrop-blur-md p-6 rounded-full border-8 border-white/30 shadow-xl animate-bounce">
+                  <BellRing size={80} className={broadcastSettings.textColor}/>
+                </div>
+                <div className="flex-1 flex items-center justify-center w-full py-12">
+                  <p 
+                     style={{ 
+                         fontSize: `${broadcastSettings.fontSize}px`, 
+                         fontFamily: broadcastSettings.biauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' 
+                     }} 
+                     className={`font-black ${broadcastSettings.textColor} ${broadcastSettings.textAlign || 'text-center'} leading-snug whitespace-pre-wrap break-words w-full max-h-[60vh] overflow-y-auto custom-scrollbar`}
+                  >
                     {broadcastMessage}
-                 </p>
-               </div>
-               <button 
-                 onClick={() => {
-                   const cId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
-                   setDismissedBroadcastTime(cId);
-                 }} 
-                 className={`w-full max-w-2xl bg-black/20 hover:bg-black/40 ${broadcastSettings.textColor} border-4 border-black/10 text-5xl font-black py-6 rounded-[2.5rem] shadow-xl transition-all active:scale-95 shrink-0`}
-               >
-                 我知道了！
-               </button>
-             </div>
-           </div>
-         );
-     })()}
-
-     {/* 班級氣象雷達 (教師專屬) */}
-     {showMoodRadar && user && (
-       <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
-         <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-6xl border-8 border-indigo-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
-           <button onClick={() => setShowMoodRadar(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
-           <h2 className="text-4xl font-black text-indigo-800 flex items-center gap-4 mb-6 border-b-4 border-indigo-100 pb-4 shrink-0"><Radar size={48}/> 班級氣象雷達 - {formatDate(viewDate)}</h2>
-           
-           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-               <div className="grid grid-cols-2 gap-6">
-                   {/* 1. 左上：起伏區 (紅) */}
-              <div className="bg-red-50 rounded-[2rem] p-6 border-4 border-red-200 shadow-sm">
-                <h3 className="text-3xl font-black text-red-700 mb-4 flex items-center gap-2"><Zap size={36}/> 高電力 / 起伏</h3>
-                <div className="flex flex-wrap gap-3">
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').map(s => (
-                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-red-800 shadow-sm border border-red-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                  ))}
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').length === 0 && <span className="text-xl text-red-500/60 font-bold italic">目前無資料</span>}
+                  </p>
                 </div>
+                <button 
+                  onClick={() => {
+                    const cId = (broadcastData.timestamp?.seconds || "") + "_" + broadcastData.message;
+                    setDismissedBroadcastTime(cId);
+                  }} 
+                  className={`w-full max-w-2xl bg-black/20 hover:bg-black/40 ${broadcastSettings.textColor} border-4 border-black/10 text-5xl font-black py-6 rounded-[2.5rem] shadow-xl transition-all active:scale-95 shrink-0`}
+                >
+                  我知道了！
+                </button>
               </div>
+            </div>
+          );
+      })()}
 
-              {/* 2. 右上：陽光區 (黃) */}
-              <div className="bg-yellow-50 rounded-[2rem] p-6 border-4 border-yellow-200 shadow-sm">
-                <h3 className="text-3xl font-black text-yellow-700 mb-4 flex items-center gap-2"><Sun size={36}/> 高電力 / 陽光</h3>
-                <div className="flex flex-wrap gap-3">
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').map(s => (
-                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-yellow-800 shadow-sm border border-yellow-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                  ))}
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').length === 0 && <span className="text-xl text-yellow-500/60 font-bold italic">目前無資料</span>}
+      {showMoodRadar && user && (
+        <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
+          <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-6xl border-8 border-indigo-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
+            <button onClick={() => setShowMoodRadar(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
+            <h2 className="text-4xl font-black text-indigo-800 flex items-center gap-4 mb-6 border-b-4 border-indigo-100 pb-4 shrink-0"><Radar size={48}/> 班級氣象雷達 - {formatDate(viewDate)}</h2>
+            
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-red-50 rounded-[2rem] p-6 border-4 border-red-200 shadow-sm">
+                    <h3 className="text-3xl font-black text-red-700 mb-4 flex items-center gap-2"><Zap size={36}/> 高電力 / 起伏</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').map(s => (
+                        <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-red-800 shadow-sm border border-red-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                      ))}
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'red').length === 0 && <span className="text-xl text-red-500/60 font-bold italic">目前無資料</span>}
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 rounded-[2rem] p-6 border-4 border-yellow-200 shadow-sm">
+                    <h3 className="text-3xl font-black text-yellow-700 mb-4 flex items-center gap-2"><Sun size={36}/> 高電力 / 陽光</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').map(s => (
+                        <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-yellow-800 shadow-sm border border-yellow-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                      ))}
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'yellow').length === 0 && <span className="text-xl text-yellow-500/60 font-bold italic">目前無資料</span>}
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-[2rem] p-6 border-4 border-blue-200 shadow-sm">
+                    <h3 className="text-3xl font-black text-blue-700 mb-4 flex items-center gap-2"><Cloud size={36}/> 低電力 / 起伏</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').map(s => (
+                        <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-blue-800 shadow-sm border border-blue-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                      ))}
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').length === 0 && <span className="text-xl text-blue-500/60 font-bold italic">目前無資料</span>}
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 rounded-[2rem] p-6 border-4 border-green-200 shadow-sm">
+                    <h3 className="text-3xl font-black text-green-700 mb-4 flex items-center gap-2"><Leaf size={36}/> 低電力 / 陽光</h3>
+                    <div className="flex flex-wrap gap-3">
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').map(s => (
+                        <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-green-800 shadow-sm border border-green-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
+                      ))}
+                      {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').length === 0 && <span className="text-xl text-green-500/60 font-bold italic">目前無資料</span>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* 3. 左下：沮喪區 (藍) */}
-              <div className="bg-blue-50 rounded-[2rem] p-6 border-4 border-blue-200 shadow-sm">
-                <h3 className="text-3xl font-black text-blue-700 mb-4 flex items-center gap-2"><Cloud size={36}/> 低電力 / 起伏</h3>
-                <div className="flex flex-wrap gap-3">
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').map(s => (
-                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-blue-800 shadow-sm border border-blue-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                  ))}
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'blue').length === 0 && <span className="text-xl text-blue-500/60 font-bold italic">目前無資料</span>}
+                
+                <div className="mt-6 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+                    <h3 className="text-2xl font-bold text-slate-500 mb-2">尚未打卡 / 無心情紀錄：</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {STUDENTS.filter(s => !attendance[s.id]?.mood).map(s => (
+                            <span key={s.id} className="bg-white px-3 py-1 rounded-lg text-xl font-bold text-slate-400 border border-slate-200 shadow-sm">{maskName(s.name)}</span>
+                        ))}
+                    </div>
                 </div>
-              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* 4. 右下：穩定區 (綠) */}
-              <div className="bg-green-50 rounded-[2rem] p-6 border-4 border-green-200 shadow-sm">
-                <h3 className="text-3xl font-black text-green-700 mb-4 flex items-center gap-2"><Leaf size={36}/> 低電力 / 陽光</h3>
-                <div className="flex flex-wrap gap-3">
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').map(s => (
-                    <span key={s.id} className="bg-white px-4 py-2 rounded-xl text-2xl font-bold text-green-800 shadow-sm border border-green-300">{maskName(s.name)}: {attendance[s.id].mood.word}</span>
-                  ))}
-                  {STUDENTS.filter(s => attendance[s.id]?.mood?.quadrant === 'green').length === 0 && <span className="text-xl text-green-500/60 font-bold italic">目前無資料</span>}
-                </div>
-              </div>
-               </div>
-               
-               <div className="mt-6 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
-                   <h3 className="text-2xl font-bold text-slate-500 mb-2">尚未打卡 / 無心情紀錄：</h3>
-                   <div className="flex flex-wrap gap-2">
-                       {STUDENTS.filter(s => !attendance[s.id]?.mood).map(s => (
-                           <span key={s.id} className="bg-white px-3 py-1 rounded-lg text-xl font-bold text-slate-400 border border-slate-200 shadow-sm">{maskName(s.name)}</span>
-                       ))}
-                   </div>
-               </div>
-           </div>
-         </div>
-       </div>
-     )}
-
-     {/* 廣播發布編輯器 (教師用) */}
-     {showBroadcastEditor && user && (
-       <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
-         <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-5xl border-8 border-sky-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
-           <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
-           <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b-4 border-sky-100 pb-4 pr-16 shrink-0">
+      {showBroadcastEditor && user && (
+        <div className="fixed inset-0 bg-sky-900/90 backdrop-blur-md z-[10000] flex items-center justify-center p-4 animate-in fade-in print:hidden">
+          <div className="bg-white rounded-[3rem] shadow-2xl p-10 w-full max-w-5xl border-8 border-sky-200 relative zoom-in-95 flex flex-col max-h-[95vh]">
+            <button onClick={() => setShowBroadcastEditor(false)} className="absolute top-6 right-6 p-3 text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full transition-colors"><X size={32}/></button>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b-4 border-sky-100 pb-4 pr-16 shrink-0">
               <h2 className="text-4xl font-black text-sky-800 flex items-center gap-4">
                 <Megaphone size={48}/> 全域廣播控制台
               </h2>
@@ -769,160 +783,157 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                 ))}
               </div>
             </div>
-           
-           <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar shrink">
-               <div className="flex flex-col gap-2">
-                   <label className="text-2xl font-bold text-slate-600 flex items-center gap-2"><Type size={28}/> 廣播內容與即時預覽</label>
-                   <textarea 
-                     value={broadcastInput} 
-                     onChange={e => setBroadcastInput(e.target.value)} 
-                     style={{ fontSize: `${bcFontSize}px`, fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }}
-                     className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor} ${bcAlign}`} 
-                     placeholder="請輸入要廣播給全班的任務或提醒..."
-                   ></textarea>
-               </div>
-
-               <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-4">
-                       <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">字體設定</label>
-                       <div className="flex items-center gap-4">
-                           <button onClick={() => setBcBiauKai(!bcBiauKai)} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcBiauKai ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>切換標楷體</button>
-                           <div className="flex items-center bg-white border-2 border-slate-300 rounded-2xl overflow-hidden shadow-sm">
-                               <button onClick={() => setBcFontSize(f => Math.max(30, f - 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Minus size={28}/></button>
-                               <span className="w-20 text-center text-3xl font-black text-slate-800">{bcFontSize}</span>
-                               <button onClick={() => setBcFontSize(f => Math.min(150, f + 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Plus size={28}/></button>
-                           </div>
-                       </div>
-                   </div>
-                 <div className="space-y-4">
-                  <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">對齊設定</label>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setBcAlign("text-left")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-left' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠左</button>
-                    <button onClick={() => setBcAlign("text-center")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-center' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>置中</button>
-                    <button onClick={() => setBcAlign("text-right")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-right' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠右</button>
-                  </div>
+            
+            <div className="flex flex-col gap-6 overflow-y-auto pr-4 custom-scrollbar shrink">
+                <div className="flex flex-col gap-2">
+                    <label className="text-2xl font-bold text-slate-600 flex items-center gap-2"><Type size={28}/> 廣播內容與即時預覽</label>
+                    <textarea 
+                      value={broadcastInput} 
+                      onChange={e => setBroadcastInput(e.target.value)} 
+                      style={{ fontSize: `${bcFontSize}px`, fontFamily: bcBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} 
+                      className={`w-full min-h-[300px] p-8 border-4 border-slate-200 rounded-[2rem] font-black focus:outline-none focus:border-sky-400 transition-colors shadow-inner ${bcBgColor} ${bcTextColor} ${bcAlign}`} 
+                      placeholder="請輸入要廣播給全班的任務或提醒..."
+                    ></textarea>
                 </div>
-                   
-               </div>
-           </div>
-           
-           <div className="flex gap-6 mt-8 pt-6 border-t-4 border-sky-100 shrink-0">
-             <button 
-                onClick={async () => {
-                  if(!broadcastInput.trim()) return;
-                  await setDoc(doc(db, "broadcasts", "current"), { 
-                    message: broadcastInput.trim(), 
-                    timestamp: serverTimestamp(), 
-                    active: true,
-                    settings: { bgColor: bcBgColor, textColor: bcTextColor, fontSize: bcFontSize, biauKai: bcBiauKai, textAlign: bcAlign }
-                  });
-                  setShowBroadcastEditor(false);
-                }} 
-                className="flex-1 bg-sky-500 hover:bg-sky-600 text-white text-3xl font-black py-5 rounded-2xl shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-3"
-              >
-                <Megaphone size={36}/> 立即發布全班廣播
-              </button>
-             <button onClick={async () => { await setDoc(doc(db, "broadcasts", "current"), { active: false }, { merge: true }); setShowBroadcastEditor(false); setBroadcastInput(""); }} className="px-8 bg-slate-200 hover:bg-slate-300 text-slate-700 text-2xl font-bold py-5 rounded-2xl transition-all border-2 border-slate-300 active:scale-95">
-               收回並清除
-             </button>
-           </div>
-         </div>
-       </div>
-     )}
 
-     {/* 自訂登入視窗 */}
-     {showLoginModal && (
-       <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
-         <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border-4 border-sky-100 relative animate-in zoom-in-95 duration-200">
-           <button onClick={() => setShowLoginModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
-           <div className="flex flex-col items-center mb-6">
-             <div className="bg-sky-100 p-4 rounded-full mb-4"><Lock size={40} className="text-sky-600" /></div>
-             <h2 className="text-3xl font-black text-sky-900">教師權限驗證</h2>
-             <p className="text-slate-500 mt-2 font-medium">請輸入您的帳號與密碼以解鎖完整功能</p>
-           </div>
-           <form onSubmit={handleLogin} className="space-y-4">
-             <div><label className="block text-sm font-bold text-slate-700 mb-1">電子郵件</label><input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800" placeholder="teacher@example.com" required /></div>
-             <div><label className="block text-sm font-bold text-slate-700 mb-1">密碼</label><input type="password" value={loginPwd} onChange={(e) => setLoginPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800" placeholder="••••••••" required /></div>
-             {loginError && (<div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-bold flex items-center gap-2"><AlertTriangle size={18} /> {loginError}</div>)}
-             <button type="submit" disabled={isLoggingIn} className={`w-full py-4 rounded-xl text-xl font-black text-white transition-all transform active:scale-[0.98] ${isLoggingIn ? 'bg-sky-400 cursor-wait' : 'bg-sky-600 hover:bg-sky-700 shadow-lg hover:shadow-sky-600/30'}`}>{isLoggingIn ? '驗證中...' : '確認登入'}</button>
-           </form>
-         </div>
-       </div>
-     )}
-
-     <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
-       <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
-         <div className="flex items-center gap-6">
-           <Ship className="w-16 h-16 text-sky-600 animate-pulse" />
-           <div className="flex flex-col">
-             <div className="flex items-baseline gap-4">
-               <h1 className="text-6xl font-black text-sky-900 leading-none">{selectedAcademicYear === '114' ? '五甲' : '六甲'}航海日誌</h1>
-               <span className="text-lg font-bold text-slate-300">Ver {APP_VERSION}</span>
-               <button onClick={() => user ? signOut(auth) : setShowLoginModal(true)} className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}>
-                 {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '已解鎖：教師模式' : '學生模式 (點擊登入)'}
+                <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">字體設定</label>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setBcBiauKai(!bcBiauKai)} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcBiauKai ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>切換標楷體</button>
+                            <div className="flex items-center bg-white border-2 border-slate-300 rounded-2xl overflow-hidden shadow-sm">
+                                <button onClick={() => setBcFontSize(f => Math.max(30, f - 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Minus size={28}/></button>
+                                <span className="w-20 text-center text-3xl font-black text-slate-800">{bcFontSize}</span>
+                                <button onClick={() => setBcFontSize(f => Math.min(150, f + 10))} className="p-4 hover:bg-slate-100 text-slate-600 transition-colors"><Plus size={28}/></button>
+                            </div>
+                        </div>
+                    </div>
+                  <div className="space-y-4">
+                   <label className="text-2xl font-bold text-slate-600 border-b-2 border-slate-200 pb-2 block">對齊設定</label>
+                   <div className="flex items-center gap-3">
+                     <button onClick={() => setBcAlign("text-left")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-left' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠左</button>
+                     <button onClick={() => setBcAlign("text-center")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-center' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>置中</button>
+                     <button onClick={() => setBcAlign("text-right")} className={`flex-1 py-4 rounded-2xl text-2xl font-bold transition-all border-2 ${bcAlign === 'text-right' ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}>靠右</button>
+                   </div>
+                 </div>
+                </div>
+            </div>
+            
+            <div className="flex gap-6 mt-8 pt-6 border-t-4 border-sky-100 shrink-0">
+              <button 
+                 onClick={async () => {
+                   if(!broadcastInput.trim()) return;
+                   await setDoc(doc(db, "broadcasts", "current"), { 
+                     message: broadcastInput.trim(), 
+                     timestamp: serverTimestamp(), 
+                     active: true,
+                     settings: { bgColor: bcBgColor, textColor: bcTextColor, fontSize: bcFontSize, biauKai: bcBiauKai, textAlign: bcAlign }
+                   });
+                   setShowBroadcastEditor(false);
+                 }} 
+                 className="flex-1 bg-sky-500 hover:bg-sky-600 text-white text-3xl font-black py-5 rounded-2xl shadow-xl transition-transform active:scale-95 flex items-center justify-center gap-3"
+               >
+                 <Megaphone size={36}/> 立即發布全班廣播
                </button>
-                 <div className="flex items-center gap-2 bg-sky-50 px-4 py-2 rounded-2xl border border-sky-200 shadow-inner">
-            <select
-              value={selectedAcademicYear}
-              onChange={(e) => handleYearChange(e.target.value)}
-              className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
-            >
-              {getCurrentAcademicYear() === '115' ? (
-                <>
-                  <option value="115">115學年度(六年級)</option>
-                  <option value="114">114學年度(五年級)</option>
-                </>
-              ) : (
-                <>
-                  <option value="114">114學年度(五年級)</option>
-                  <option value="115">115學年度(六年級)</option>
-                </>
-              )}
-            </select>
+              <button onClick={async () => { await setDoc(doc(db, "broadcasts", "current"), { active: false }, { merge: true }); setShowBroadcastEditor(false); setBroadcastInput(""); }} className="px-8 bg-slate-200 hover:bg-slate-300 text-slate-700 text-2xl font-bold py-5 rounded-2xl transition-all border-2 border-slate-300 active:scale-95">
+                收回並清除
+              </button>
+            </div>
           </div>
-             </div>
-             <p className="text-2xl font-normal text-sky-600/80 mt-2 tracking-[1.25em] font-serif italic whitespace-nowrap">學海無涯勤是岸</p>
-           </div>
-         </div>
-         <div className="flex items-center gap-10">
-           <span className="text-4xl font-bold text-slate-500">{currentTime.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })}</span>
-           <span className="text-8xl font-mono font-black text-blue-700 drop-shadow-md">{currentTime.toLocaleTimeString('zh-TW', { hour12: false })}</span>
-         </div>
-       </div>
+        </div>
+      )}
 
-       <div className="px-8 py-3 flex items-center justify-between bg-sky-50/40">
-         <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2 bg-sky-100/50 px-4 py-1.5 rounded-2xl border border-sky-200 shadow-inner">
-             <span className="font-bold text-sky-800 text-2xl">航行月：</span>
-             <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-white border-2 border-sky-300 text-sky-700 rounded-xl px-2 py-1 font-black text-xl outline-none cursor-pointer hover:bg-sky-50 transition-colors">
-               {["8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月"].map(m => <option key={m} value={m}>{m}</option>)}
-             </select>
-           </div>
-           <div className="w-px h-8 bg-sky-200 mx-1"></div>
-           
-           <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1 flex-row">
-             {recordedDates
-               .filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth))
-               .sort((a,b) => b.localeCompare(a))
-               .map(d => (
-                 <button key={d} onClick={() => { setViewDate(new Date(d)); setIsEditing(false); }} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
-                   {d.split('-')[2]}
-                 </button>
-             ))}
-           </div>
-         </div>
-         
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-sky-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border-4 border-sky-100 relative animate-in zoom-in-95 duration-200">
+            <button onClick={() => setShowLoginModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
+            <div className="flex flex-col items-center mb-6">
+              <div className="bg-sky-100 p-4 rounded-full mb-4"><Lock size={40} className="text-sky-600" /></div>
+              <h2 className="text-3xl font-black text-sky-900">教師權限驗證</h2>
+              <p className="text-slate-500 mt-2 font-medium">請輸入您的帳號與密碼以解鎖完整功能</p>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div><label className="block text-sm font-bold text-slate-700 mb-1">電子郵件</label><input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800" placeholder="teacher@example.com" required /></div>
+              <div><label className="block text-sm font-bold text-slate-700 mb-1">密碼</label><input type="password" value={loginPwd} onChange={(e) => setLoginPwd(e.target.value)} className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 outline-none transition-all text-lg font-medium text-slate-800" placeholder="••••••••" required /></div>
+              {loginError && (<div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-bold flex items-center gap-2"><AlertTriangle size={18} /> {loginError}</div>)}
+              <button type="submit" disabled={isLoggingIn} className={`w-full py-4 rounded-xl text-xl font-black text-white transition-all transform active:scale-[0.98] ${isLoggingIn ? 'bg-sky-400 cursor-wait' : 'bg-sky-600 hover:bg-sky-700 shadow-lg hover:shadow-sky-600/30'}`}>{isLoggingIn ? '驗證中...' : '確認登入'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <header className="bg-white border-b-2 border-sky-100 shadow-sm sticky top-0 z-[100] print:hidden">
+        <div className="px-8 py-4 flex items-center justify-between border-b border-sky-50">
+          <div className="flex items-center gap-6">
+            <Ship className="w-16 h-16 text-sky-600 animate-pulse" />
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-4">
+                <h1 className="text-6xl font-black text-sky-900 leading-none">{selectedAcademicYear === '114' ? '五甲' : '六甲'}航海日誌</h1>
+                <span className="text-lg font-bold text-slate-300">Ver {APP_VERSION}</span>
+                <button onClick={() => user ? signOut(auth) : setShowLoginModal(true)} className={`ml-4 px-4 py-2 rounded-xl text-xl font-bold flex items-center gap-2 transition-all ${user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-700'}`}>
+                  {user ? <Unlock size={24}/> : <Lock size={24}/>} {user ? '已解鎖：教師模式' : '學生模式 (點擊登入)'}
+                </button>
+                <div className="flex items-center gap-2 bg-sky-50 px-4 py-2 rounded-2xl border border-sky-200 shadow-inner">
+                  <select
+                    value={selectedAcademicYear}
+                    onChange={(e) => handleYearChange(e.target.value)}
+                    className="bg-white border-2 border-sky-300 text-sky-800 rounded-xl px-3 py-1 font-black text-xl outline-none cursor-pointer"
+                  >
+                    {getCurrentAcademicYear() === '115' ? (
+                      <>
+                        <option value="115">115學年度(六年級)</option>
+                        <option value="114">114學年度(五年級)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="114">114學年度(五年級)</option>
+                        <option value="115">115學年度(六年級)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+              <p className="text-2xl font-normal text-sky-600/80 mt-2 tracking-[1.25em] font-serif italic whitespace-nowrap">學海無涯勤是岸</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-10">
+            <span className="text-4xl font-bold text-slate-500">{currentTime.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })}</span>
+            <span className="text-8xl font-mono font-black text-blue-700 drop-shadow-md">{currentTime.toLocaleTimeString('zh-TW', { hour12: false })}</span>
+          </div>
+        </div>
+
+        <div className="px-8 py-3 flex items-center justify-between bg-sky-50/40">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-sky-100/50 px-4 py-1.5 rounded-2xl border border-sky-200 shadow-inner">
+              <span className="font-bold text-sky-800 text-2xl">航行月：</span>
+              <select value={activeStatMonth} onChange={(e) => setActiveStatMonth(e.target.value)} className="bg-white border-2 border-sky-300 text-sky-700 rounded-xl px-2 py-1 font-black text-xl outline-none cursor-pointer hover:bg-sky-50 transition-colors">
+                {["8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月"].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="w-px h-8 bg-sky-200 mx-1"></div>
+            
+            <div className="flex items-center gap-2 overflow-x-auto max-w-[40vw] scrollbar-hide py-1 flex-row">
+              {recordedDates
+                .filter(d => parseInt(d.split('-')[1]) === parseInt(activeStatMonth))
+                .sort((a,b) => b.localeCompare(a))
+                .map(d => (
+                  <button key={d} onClick={() => { setViewDate(new Date(d)); setIsEditing(false); }} className={`px-6 py-2 rounded-2xl text-2xl font-black transition-all shrink-0 ${formatDate(viewDate) === d ? 'bg-sky-600 text-white shadow-lg scale-105' : 'bg-white text-sky-400 border border-sky-100 hover:bg-sky-50'}`}>
+                    {d.split('-')[2]}
+                  </button>
+              ))}
+            </div>
+          </div>
+          
           {user && (
             <div className="flex items-center gap-3">
               <button onClick={() => handleDeleteDate(formatDate(viewDate))} className="p-3 bg-rose-100 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="刪除當前日期"><Trash2 size={32}/></button>
               <div className="flex bg-white p-1.5 rounded-2xl items-center shadow-inner border border-sky-100">
                 <button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronLeft size={36}/></button>
-<span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
-<button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
+                <span className="text-3xl font-black px-6 text-sky-800">{formatDate(viewDate)}</span>
+                <button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setIsEditing(false); }} className="p-2 hover:bg-sky-50 rounded-xl transition-all"><ChevronRight size={36}/></button>
               </div>
               <button onClick={async () => { if (!user || !db) return; const dateKey = formatDate(viewDate); const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`; const annColName = `${prefix}announcements`; if (!recordedDates.includes(dateKey)) { setRecordedDates(prev => [...prev, dateKey].sort()); } await setDoc(doc(db, annColName, dateKey), { date: dateKey, items: [{ text: "新航程開始，請點擊編輯輸入任務", colorIdx: 0 }] }, { merge: true }); setViewDate(new Date(viewDate)); setIsEditing(false); }} className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="在此日期新增任務"><Plus size={32}/></button>
               <button onClick={() => { setPickerDate(new Date(viewDate)); setShowCalendarPicker(!showCalendarPicker); }} className={`p-3 rounded-2xl transition-all shadow-sm ${showCalendarPicker ? 'bg-sky-600 text-white' : 'bg-sky-100 text-sky-600 hover:bg-sky-200'}`} title="快速找日期"><CalendarDays size={32}/></button>
-              {/* 戰術升級：新增「氣象雷達」快捷鍵 */}
               <button onClick={() => setShowMoodRadar(true)} className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all shadow-sm" title="開啟班級氣象雷達"><Radar size={32}/></button>
               <button onClick={() => setShowBroadcastEditor(true)} className="p-3 bg-amber-100 text-amber-600 rounded-2xl hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="發布全域廣播"><Megaphone size={32}/></button>
             </div>
@@ -932,9 +943,9 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
         {showCalendarPicker && (
           <div className="absolute right-8 top-full mt-2 bg-white border-4 border-sky-200 rounded-[2rem] shadow-2xl z-[200] p-6 w-80 animate-in fade-in slide-in-from-top-4">
             <div className="flex justify-between items-center mb-6">
-              <button onClick={() => setPickerDate(new Date(pickerDate.setMonth(pickerDate.getMonth() - 1)))} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronLeft size={28}/></button>
+              <button onClick={() => { const d = new Date(pickerDate); d.setMonth(d.getMonth() - 1); setPickerDate(d); }} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronLeft size={28}/></button>
               <h4 className="text-2xl font-black text-sky-800">{pickerDate.getFullYear()}年 {pickerDate.getMonth() + 1}月</h4>
-              <button onClick={() => setPickerDate(new Date(pickerDate.setMonth(pickerDate.getMonth() + 1)))} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronRight size={28}/></button>
+              <button onClick={() => { const d = new Date(pickerDate); d.setMonth(d.getMonth() + 1); setPickerDate(d); }} className="p-1 hover:bg-sky-50 rounded-lg text-sky-600"><ChevronRight size={28}/></button>
             </div>
             <div className="grid grid-cols-7 gap-2">
               {['日','一','二','三','四','五','六'].map(w => <div key={w} className="text-center font-bold text-slate-400 py-1">{w}</div>)}
@@ -1060,7 +1071,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                       date: dateKey
                     }, { merge: true });
                   } else {
-                      const currentText = displayItems.map(item => typeof item === 'string' ? item : item.text).join('\n');
+                      const currentText = (displayItems || []).map(item => typeof item === 'string' ? item : item.text).join('\n');
                       setAnnouncementText(currentText);
                       setIsEditing(true);
                     }
@@ -1140,7 +1151,6 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
               <span className="text-sky-400 font-bold">至</span>
               <input type="date" value={reportEnd} onChange={(e) => setReportEnd(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
             </div>
-            {/* 戰術升級：新增一鍵匯出 CSV */}
             {user && <button onClick={handleExportCSV} className="flex items-center gap-3 bg-green-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-green-700 shadow-xl transition-all active:scale-95"><DownloadCloud size={24}/> 匯出 CSV</button>}
             {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
@@ -1293,7 +1303,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                       >
                         事假
                       </button>
-                   </div>
+                    </div>
                   </div>
                 );
               })()}
@@ -1335,7 +1345,7 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
                     )) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
                   </div>
                 </div>
-</div>
+              </div>
             );
           })}
         </div>
@@ -1345,4 +1355,3 @@ await setDoc(doc(db, attColName, moodModalStudent.id), { mood: moodResult }, { m
 };
 
 export default App;
-
