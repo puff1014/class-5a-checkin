@@ -1393,17 +1393,34 @@ const App = () => {
           </div>
         );
       })()}
-      {/* 專屬 A4 列印排版引擎 (防腰斬、分頁控制、裁切線) */}
+      {/* 專屬 A4 列印排版引擎 (防腰斬、分頁控制、裁切線 - 最終確認版) */}
       <div className="hidden print:block bg-white text-black font-sans p-0 m-0">
         <style dangerouslySetInnerHTML={{ __html: `
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm;
+            margin: 8mm 10mm;
           }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page-break-always { page-break-after: always; break-after: page; }
-            .card-no-break { page-break-inside: avoid; break-inside: avoid; }
+            .print-page-container {
+              page-break-after: always;
+              break-after: page;
+              height: 278mm;
+              max-height: 278mm;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              box-sizing: border-box;
+            }
+            .print-page-container.last-page {
+              page-break-after: auto;
+              break-after: auto;
+            }
+            .card-no-break { 
+              page-break-inside: avoid; 
+              break-inside: avoid;
+              box-sizing: border-box;
+            }
           }
         `}} />
 
@@ -1441,70 +1458,74 @@ const App = () => {
 
           return pages.map((pageGroup, pageIndex) => {
             const isLastPage = pageIndex === pages.length - 1;
+            const isSolo = pageGroup.length === 1;
+
             return (
-              <div key={pageIndex} className={`w-full flex flex-col justify-between ${!isLastPage ? 'page-break-always' : ''}`} style={{ minHeight: '270mm' }}>
+              <div 
+                key={pageIndex} 
+                className={`print-page-container w-full ${isLastPage ? 'last-page' : ''}`}
+              >
                 {pageGroup.map((s, itemIndex) => {
                   const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-                  const isSolo = pageGroup.length === 1;
 
                   return (
                     <React.Fragment key={s.id}>
-                      <div className="card-no-break flex flex-col justify-between border-2 border-slate-800 rounded-2xl p-6 bg-white" style={{ minHeight: isSolo ? '260mm' : '126mm' }}>
+                      <div 
+                        className="card-no-break flex flex-col justify-between border-2 border-slate-800 rounded-2xl p-5 bg-white" 
+                        style={{ 
+                          height: isSolo ? '268mm' : '130mm',
+                          maxHeight: isSolo ? '268mm' : '130mm'
+                        }}
+                      >
                         <div>
-                          {/* 抬頭與項數統計 */}
-                          <div className="flex justify-between items-start border-b-2 border-slate-800 pb-3 mb-3">
-                            <div>
-                              <h2 className="text-3xl font-black tracking-wider text-slate-900">
-                                座號 {s.id} 號 {s.name} 待補作業清單
-                              </h2>
-                              <p className="text-sm font-semibold text-slate-500 mt-1">
-                                (統計日期：{startStr} - {endStr})
-                              </p>
-                            </div>
-                            <div className="bg-slate-900 text-white px-4 py-1.5 rounded-xl text-xl font-black">
-                              共 {sd.issues.length} 項
-                            </div>
+                          {/* 抬頭 */}
+                          <div className="border-b-2 border-slate-800 pb-2 mb-2">
+                            <h2 className="text-2xl font-black tracking-wide text-slate-900">
+                              {s.name} 生活與學習表現紀錄
+                            </h2>
+                            <p className="text-xs font-semibold text-slate-500 mt-1">
+                              統計期間：{startStr} ～ {endStr}
+                            </p>
                           </div>
 
-                          {/* 出席與作業簡報 */}
-                          <div className="grid grid-cols-2 text-sm font-bold bg-slate-100 p-2.5 rounded-xl mb-4 border border-slate-300">
-                            <div>出席摘要：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
+                          {/* 出席狀況與繳交狀況 */}
+                          <div className="grid grid-cols-2 text-xs font-bold bg-slate-100 p-2 rounded-xl mb-3 border border-slate-300">
+                            <div>出席狀況：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
                             <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
                           </div>
 
-                          {/* 三欄方格作業清單 */}
-                          <div className="mb-4">
-                            <p className="text-base font-black text-slate-800 mb-2">待完成／待補交項目：</p>
+                          {/* 三欄方格紀錄清單（無贅字引導，齊全時正面鼓勵） */}
+                          <div>
                             {sd.issues.length > 0 ? (
-                              <div className="grid grid-cols-3 gap-x-4 gap-y-2.5">
+                              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
                                 {sd.issues.map((iss, i) => (
-                                  <div key={i} className="flex items-start text-sm font-medium border border-slate-300 rounded-lg p-2 bg-slate-50/50">
-                                    <span className="inline-block w-4 h-4 border-2 border-slate-700 rounded-sm mr-2 shrink-0 mt-0.5" />
+                                  <div key={i} className="flex items-start text-xs font-medium border border-slate-300 rounded-lg p-1.5 bg-slate-50/50">
+                                    <span className="inline-block w-3.5 h-3.5 border-2 border-slate-700 rounded-sm mr-1.5 shrink-0 mt-0.5" />
                                     <span className="leading-tight break-all">{iss}</span>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <div className="py-6 text-center text-slate-500 font-bold text-lg border border-dashed border-slate-300 rounded-xl">
-                                ✨ 太棒了！區間內所有任務皆已如期齊全！
+                              <div className="py-5 text-center text-slate-700 font-black text-lg">
+                                準時繳交各項作業
                               </div>
                             )}
                           </div>
                         </div>
 
                         {/* 底部家長簽章欄位 */}
-                        <div className="pt-4 border-t border-slate-300 flex justify-end items-center mt-auto">
-                          <span className="text-lg font-black text-slate-800">
+                        <div className="pt-2 border-t border-slate-300 flex justify-end items-center mt-auto">
+                          <span className="text-base font-black text-slate-800">
                             家長簽章：___________________________
                           </span>
                         </div>
                       </div>
 
-                      {/* 模式 A：同頁雙人之間的裁切虛線 */}
+                      {/* 雙人模式下的裁切虛線標記 */}
                       {!isSolo && itemIndex === 0 && (
-                        <div className="w-full my-3 flex items-center justify-center relative">
+                        <div className="w-full my-1 flex items-center justify-center relative">
                           <div className="w-full border-t-2 border-dashed border-slate-400"></div>
-                          <span className="absolute bg-white px-4 text-xs font-bold text-slate-500 tracking-widest">
+                          <span className="absolute bg-white px-3 text-[11px] font-bold text-slate-500 tracking-widest">
                             ✂ 請沿虛線裁切 (第 {pageIndex + 1} 頁)
                           </span>
                         </div>
