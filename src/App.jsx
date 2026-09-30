@@ -1393,44 +1393,129 @@ const App = () => {
           </div>
         );
       })()}
-      <div className="hidden print:block p-4 bg-white text-black font-sans">
-        <h1 className="text-center text-4xl font-bold mb-6 border-b-4 border-black pb-4">{selectedAcademicYear === '114' ? '五年甲班' : '六年甲班'} {reportStart} 至 {reportEnd} 生活與學習表現統計表</h1>
-        <div className="flex flex-col gap-6">
-          {STUDENTS.map(s => {
-            const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-            const shortIssues = sd.issues;
-            const startStr = `${parseInt(reportStart.split('-')[1])}/${parseInt(reportStart.split('-')[2])}`;
-            const endStr = `${parseInt(reportEnd.split('-')[1])}/${parseInt(reportEnd.split('-')[2])}`;
+      {/* 專屬 A4 列印排版引擎 (防腰斬、分頁控制、裁切線) */}
+      <div className="hidden print:block bg-white text-black font-sans p-0 m-0">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break-always { page-break-after: always; break-after: page; }
+            .card-no-break { page-break-inside: avoid; break-inside: avoid; }
+          }
+        `}} />
 
+        {(() => {
+          const targetStudents = STUDENTS.filter(s => selectedPrintStudents.includes(s.id));
+          const startStr = reportStart.replace(/-/g, '/');
+          const endStr = reportEnd.replace(/-/g, '/');
+
+          // 分頁計算引擎
+          const pages = [];
+          if (printLayoutMode === 'single') {
+            targetStudents.forEach(s => pages.push([s]));
+          } else {
+            let currentPage = [];
+            targetStudents.forEach((s) => {
+              const sd = monthlyStats[s.id] || { issues: [] };
+              const isHuge = sd.issues.length >= 12; // 超過 12 項自動升格獨佔一張 A4
+
+              if (isHuge) {
+                if (currentPage.length > 0) {
+                  pages.push(currentPage);
+                  currentPage = [];
+                }
+                pages.push([s]);
+              } else {
+                currentPage.push(s);
+                if (currentPage.length === 2) {
+                  pages.push(currentPage);
+                  currentPage = [];
+                }
+              }
+            });
+            if (currentPage.length > 0) pages.push(currentPage);
+          }
+
+          return pages.map((pageGroup, pageIndex) => {
+            const isLastPage = pageIndex === pages.length - 1;
             return (
-              <div key={s.id} className="border-2 border-black p-5 rounded-xl break-inside-avoid">
-                <h3 className="text-2xl font-bold border-b-2 border-slate-300 pb-2 mb-4">
-                  {s.name} {startStr}~{endStr} 學習表現
-                </h3>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-1 text-lg border-r border-slate-200">
-                    <p className="font-bold">● 出席狀況：</p>
-                    <p className="pl-6">準時 {sd.onTime}天 / 遲到 {sd.late}天 / 缺席 {sd.sick + sd.personal}天</p>
-                  </div>
-                  <div className="space-y-1 text-lg pl-4">
-                    <p className="font-bold">● 作業統計：</p>
-                    <p className="pl-6 whitespace-nowrap">齊全 {sd.fullDoneDays}天 / 遲交 {sd.lateDays}天 / <span className="font-bold">缺交 {sd.missingDays}天</span></p>
-                  </div>
-                </div>
-                <div className="text-base mt-2 border-t border-slate-200 pt-3">
-                  <p className="font-bold mb-2">● 需補交/補正任務明細：</p>
-                  <div className="pl-2 text-[13px] leading-relaxed" style={{ columnWidth: '180px', columnGap: '1.5rem', columnRule: '1px dashed #ccc' }}>
-                    {shortIssues.length > 0 ? shortIssues.map((iss, i) => (
-                      <div key={i} className="mb-0.5 break-inside-avoid flex items-start">
-                        <span className="mr-1">·</span><span>{iss}</span>
+              <div key={pageIndex} className={`w-full flex flex-col justify-between ${!isLastPage ? 'page-break-always' : ''}`} style={{ minHeight: '270mm' }}>
+                {pageGroup.map((s, itemIndex) => {
+                  const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+                  const isSolo = pageGroup.length === 1;
+
+                  return (
+                    <React.Fragment key={s.id}>
+                      <div className="card-no-break flex flex-col justify-between border-2 border-slate-800 rounded-2xl p-6 bg-white" style={{ minHeight: isSolo ? '260mm' : '126mm' }}>
+                        <div>
+                          {/* 抬頭與項數統計 */}
+                          <div className="flex justify-between items-start border-b-2 border-slate-800 pb-3 mb-3">
+                            <div>
+                              <h2 className="text-3xl font-black tracking-wider text-slate-900">
+                                座號 {s.id} 號 {s.name} 待補作業清單
+                              </h2>
+                              <p className="text-sm font-semibold text-slate-500 mt-1">
+                                (統計日期：{startStr} - {endStr})
+                              </p>
+                            </div>
+                            <div className="bg-slate-900 text-white px-4 py-1.5 rounded-xl text-xl font-black">
+                              共 {sd.issues.length} 項
+                            </div>
+                          </div>
+
+                          {/* 出席與作業簡報 */}
+                          <div className="grid grid-cols-2 text-sm font-bold bg-slate-100 p-2.5 rounded-xl mb-4 border border-slate-300">
+                            <div>出席摘要：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
+                            <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
+                          </div>
+
+                          {/* 三欄方格作業清單 */}
+                          <div className="mb-4">
+                            <p className="text-base font-black text-slate-800 mb-2">待完成／待補交項目：</p>
+                            {sd.issues.length > 0 ? (
+                              <div className="grid grid-cols-3 gap-x-4 gap-y-2.5">
+                                {sd.issues.map((iss, i) => (
+                                  <div key={i} className="flex items-start text-sm font-medium border border-slate-300 rounded-lg p-2 bg-slate-50/50">
+                                    <span className="inline-block w-4 h-4 border-2 border-slate-700 rounded-sm mr-2 shrink-0 mt-0.5" />
+                                    <span className="leading-tight break-all">{iss}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="py-6 text-center text-slate-500 font-bold text-lg border border-dashed border-slate-300 rounded-xl">
+                                ✨ 太棒了！區間內所有任務皆已如期齊全！
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 底部家長簽章欄位 */}
+                        <div className="pt-4 border-t border-slate-300 flex justify-end items-center mt-auto">
+                          <span className="text-lg font-black text-slate-800">
+                            家長簽章：___________________________
+                          </span>
+                        </div>
                       </div>
-                    )) : <p className="text-slate-500 italic">目前各項任務皆已齊全</p>}
-                  </div>
-                </div>
+
+                      {/* 模式 A：同頁雙人之間的裁切虛線 */}
+                      {!isSolo && itemIndex === 0 && (
+                        <div className="w-full my-3 flex items-center justify-center relative">
+                          <div className="w-full border-t-2 border-dashed border-slate-400"></div>
+                          <span className="absolute bg-white px-4 text-xs font-bold text-slate-500 tracking-widest">
+                            ✂ 請沿虛線裁切 (第 {pageIndex + 1} 頁)
+                          </span>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             );
-          })}
-        </div>
+          });
+        })()}
       </div>
     </div>
   );
