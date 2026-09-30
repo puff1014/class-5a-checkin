@@ -409,12 +409,29 @@ const App = () => {
   const getFinalTaskStatus = (id, originalTaskName, attData) => {
     const cleanName = typeof originalTaskName === 'string' ? originalTaskName.trim() : (originalTaskName?.text?.trim() || "");
     if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
+    
     const hw = attData?.completedTasks || {};
-    if (!hw[cleanName]) return 'missing';
-    if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
-    return 'done';
-  };
+    
+    // 1. 精準比對
+    if (hw[cleanName]) {
+      if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
+      return 'done';
+    }
 
+    // 2. 忽略空白與全半形比對（容許微調作業名稱，例如補充頁碼）
+    const pureName = cleanName.replace(/\s+/g, '').toLowerCase();
+    const matchedKey = Object.keys(hw).find(k => {
+      const pureK = k.replace(/\s+/g, '').toLowerCase();
+      return pureK === pureName || (pureName.length >= 2 && pureK.includes(pureName)) || (pureK.length >= 2 && pureName.includes(pureK));
+    });
+
+    if (matchedKey && hw[matchedKey]) {
+      if (isAutoTaskLate(id, attData.lastActionTime)) return 'late';
+      return 'done';
+    }
+
+    return 'missing';
+  };
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
