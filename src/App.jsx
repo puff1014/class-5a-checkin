@@ -210,7 +210,8 @@ const App = () => {
   const [auth, setAuth] = useState(null);
   const [user, setUser] = useState(null);
   const [viewDate, setViewDate] = useState(new Date());
-  
+  const [printLayoutMode, setPrintLayoutMode] = useState('duo');
+  const [selectedPrintStudents, setSelectedPrintStudents] = useState(() => STUDENTS.map(s => s.id));
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getCurrentAcademicYear());
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -1161,17 +1162,80 @@ const App = () => {
       </main>
 
       <section className="mx-4 mb-12 bg-white rounded-[3rem] p-8 shadow-2xl border-4 border-sky-100 flex flex-col print:hidden">
-        <div className="flex justify-between items-center mb-6 px-2">
-          <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5"><Calendar size={48} className="text-sky-600"/> 學習表現分析報表</h3>
-          <div className="flex gap-4 items-center">
-            <div className="flex items-center gap-2 bg-sky-50 p-2 rounded-2xl border-2 border-sky-200 shadow-sm">
-              <input type="date" value={reportStart} onChange={(e) => setReportStart(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
-              <span className="text-sky-400 font-bold">至</span>
-              <input type="date" value={reportEnd} onChange={(e) => setReportEnd(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
+        <div className="flex flex-col gap-4 mb-6 px-2 border-b-2 border-sky-100 pb-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5">
+              <Calendar size={48} className="text-sky-600"/> 學習表現分析報表
+            </h3>
+            <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-2 bg-sky-50 p-2 rounded-2xl border-2 border-sky-200 shadow-sm">
+                <input type="date" value={reportStart} onChange={(e) => setReportStart(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
+                <span className="text-sky-400 font-bold">至</span>
+                <input type="date" value={reportEnd} onChange={(e) => setReportEnd(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
+              </div>
+              {user && <button onClick={handleExportCSV} className="flex items-center gap-3 bg-green-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-green-700 shadow-xl transition-all active:scale-95"><DownloadCloud size={24}/> 匯出 CSV</button>}
+              {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印通知單</button>}
             </div>
-            {user && <button onClick={handleExportCSV} className="flex items-center gap-3 bg-green-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-green-700 shadow-xl transition-all active:scale-95"><DownloadCloud size={24}/> 匯出 CSV</button>}
-            {user && <button onClick={() => window.print()} className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-2.5 rounded-2xl font-black text-xl hover:bg-indigo-700 shadow-xl transition-all active:scale-95"><Printer size={24}/> 列印報表</button>}
           </div>
+
+          {/* 列印排版控制面板 */}
+          {user && (
+            <div className="bg-sky-50/70 p-4 rounded-2xl border border-sky-200 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="text-xl font-black text-sky-900">列印版面：</span>
+                <div className="flex items-center bg-white p-1 rounded-xl border border-sky-300">
+                  <button
+                    onClick={() => setPrintLayoutMode('duo')}
+                    className={`px-4 py-1.5 rounded-lg text-lg font-bold transition-all ${printLayoutMode === 'duo' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 hover:text-sky-700'}`}
+                  >
+                    省紙雙人模式 (一頁2人)
+                  </button>
+                  <button
+                    onClick={() => setPrintLayoutMode('single')}
+                    className={`px-4 py-1.5 rounded-lg text-lg font-bold transition-all ${printLayoutMode === 'single' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 hover:text-sky-700'}`}
+                  >
+                    獨立滿版模式 (一人A4)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xl font-black text-sky-900 mr-1">列印對象：</span>
+                <button
+                  onClick={() => {
+                    if (selectedPrintStudents.length === STUDENTS.length) {
+                      setSelectedPrintStudents([]);
+                    } else {
+                      setSelectedPrintStudents(STUDENTS.map(s => s.id));
+                    }
+                  }}
+                  className="px-3 py-1 bg-sky-200 text-sky-800 rounded-lg text-base font-black hover:bg-sky-300 transition-colors mr-2"
+                >
+                  {selectedPrintStudents.length === STUDENTS.length ? '取消全選' : '全選'}
+                </button>
+                {STUDENTS.map(s => {
+                  const isChecked = selectedPrintStudents.includes(s.id);
+                  return (
+                    <label key={s.id} className={`px-2.5 py-1 rounded-lg text-base font-bold cursor-pointer transition-all border ${isChecked ? 'bg-sky-600 text-white border-sky-700' : 'bg-white text-slate-500 border-slate-300'}`}>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPrintStudents(prev => [...prev, s.id]);
+                          } else {
+                            setSelectedPrintStudents(prev => prev.filter(id => id !== s.id));
+                          }
+                        }}
+                      />
+                      {s.id}. {s.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         <div className="overflow-auto rounded-[2rem] border-2 border-sky-50">
           <table className="w-full text-center table-fixed border-collapse">
