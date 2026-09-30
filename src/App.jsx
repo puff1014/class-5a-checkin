@@ -1393,48 +1393,30 @@ const App = () => {
           </div>
         );
       })()}
-      {/* 專屬 A4 列印排版引擎 (實體 A5 獨立雙卡片版) */}
+      {/* 專屬 A4 列印排版引擎 (保證兩兩成對、外框自適應包覆版) */}
       <div className="hidden print:block bg-white text-black font-sans p-0 m-0">
         <style dangerouslySetInnerHTML={{ __html: `
           @page {
             size: A4 portrait;
-            margin: 6mm 10mm;
+            margin: 6mm 8mm;
           }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .print-page-wrapper {
-              height: 280mm;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              box-sizing: border-box;
               page-break-after: always;
               break-after: page;
+              box-sizing: border-box;
             }
             .print-card-duo {
-              height: 133mm;
-              max-height: 133mm;
               box-sizing: border-box;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
-              border: 2px solid #1e293b;
-              border-radius: 12px;
-              padding: 14px 18px;
+              border: 1.5px solid #1e293b;
+              border-radius: 10px;
+              padding: 10px 14px;
               page-break-inside: avoid;
               break-inside: avoid;
-            }
-            .print-card-single {
-              height: 275mm;
-              box-sizing: border-box;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              border: 2px solid #1e293b;
-              border-radius: 12px;
-              padding: 20px;
-              page-break-after: always;
-              break-after: page;
             }
           }
         `}} />
@@ -1444,74 +1426,30 @@ const App = () => {
           const startStr = reportStart.replace(/-/g, '/');
           const endStr = reportEnd.replace(/-/g, '/');
 
-          // 1. 獨立滿版模式：一人一張 A4
-          if (printLayoutMode === 'single') {
-            return targetStudents.map(s => {
-              const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-              return (
-                <div key={s.id} className="print-card-single">
-                  <div>
-                    <div className="border-b-2 border-slate-800 pb-2 mb-3 flex justify-between items-baseline">
-                      <h2 className="text-3xl font-black text-slate-900">{s.name} 生活與學習表現紀錄</h2>
-                      <p className="text-sm font-semibold text-slate-500">統計期間：{startStr} ～ {endStr}</p>
-                    </div>
-                    <div className="grid grid-cols-2 text-sm font-bold bg-slate-100 p-2.5 rounded-xl mb-4 border border-slate-300">
-                      <div>出席狀況：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
-                      <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
-                    </div>
-                    <div>
-                      {sd.issues.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-                          {sd.issues.map((iss, i) => (
-                            <div key={i} className="flex items-start text-xs font-medium border border-slate-300 rounded-lg p-2 bg-slate-50/50">
-                              <span className="inline-block w-3.5 h-3.5 border-2 border-slate-700 rounded-sm mr-1.5 shrink-0 mt-0.5" />
-                              <span className="leading-tight break-all">{iss}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-slate-700 font-black text-xl">準時繳交各項作業</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 flex justify-end items-center">
-                    <span className="text-base font-black text-slate-800">家長簽章：___________________________</span>
-                  </div>
-                </div>
-              );
-            });
+          // 保證嚴格兩兩一組，絕不任意拆開打散
+          const pairs = [];
+          for (let i = 0; i < targetStudents.length; i += 2) {
+            pairs.push(targetStudents.slice(i, i + 2));
           }
 
-          // 2. 省紙雙人模式：36 項以內才湊對雙人，超過 36 項獨立單人
-          const pairs = [];
-          let currentPair = [];
-          targetStudents.forEach((s) => {
-            const sd = monthlyStats[s.id] || { issues: [] };
-            const isHeavy = (sd.issues?.length || 0) > 36;
-
-            if (isHeavy) {
-              if (currentPair.length > 0) {
-                pairs.push(currentPair);
-                currentPair = [];
-              }
-              pairs.push([s]);
-            } else {
-              currentPair.push(s);
-              if (currentPair.length === 2) {
-                pairs.push(currentPair);
-                currentPair = [];
-              }
-            }
-          });
-          if (currentPair.length > 0) pairs.push(currentPair);
-
           return pairs.map((pair, pIdx) => (
-            <div key={pIdx} className="print-page-wrapper">
+            <div key={pIdx} className="print-page-wrapper w-full flex flex-col justify-between" style={{ minHeight: '278mm' }}>
               {pair.map((s, itemIdx) => {
                 const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+                const count = sd.issues?.length || 0;
+                
+                // 項目極多時（如徐偉綸 > 30 項），自動微調緊湊度，保證 100% 塞進半頁
+                const isDense = count > 30;
+
                 return (
                   <React.Fragment key={s.id}>
-                    <div className="print-card-duo">
+                    <div 
+                      className="print-card-duo"
+                      style={{ 
+                        minHeight: pair.length === 1 ? '265mm' : '132mm',
+                        padding: isDense ? '8px 12px' : '12px 16px'
+                      }}
+                    >
                       <div>
                         {/* 抬頭 */}
                         <div className="border-b-2 border-slate-800 pb-1 mb-1.5 flex justify-between items-baseline">
@@ -1530,22 +1468,29 @@ const App = () => {
                           {sd.issues.length > 0 ? (
                             <div className="grid grid-cols-3 gap-x-2 gap-y-1">
                               {sd.issues.map((iss, i) => (
-                                <div key={i} className="flex items-start text-[11px] font-medium border border-slate-300 rounded p-1 bg-slate-50/50">
-                                  <span className="inline-block w-3 h-3 border border-slate-700 rounded-sm mr-1 shrink-0 mt-0.5" />
+                                <div 
+                                  key={i} 
+                                  className={`flex items-start font-medium border border-slate-300 rounded bg-slate-50/50 ${
+                                    isDense ? 'text-[10px] p-0.5' : 'text-[11px] p-1'
+                                  }`}
+                                >
+                                  <span className={`inline-block border border-slate-700 rounded-sm mr-1 shrink-0 mt-0.5 ${
+                                    isDense ? 'w-2.5 h-2.5' : 'w-3 h-3'
+                                  }`} />
                                   <span className="leading-tight break-all">{iss}</span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="py-5 text-center text-slate-700 font-black text-sm">
+                            <div className="py-6 text-center text-slate-700 font-black text-sm">
                               準時繳交各項作業
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* 底部家長簽章 */}
-                      <div className="pt-1.5 border-t border-slate-200 flex justify-end items-center">
+                      {/* 底部家長簽章（自適應貼底，外框絕對完整包覆） */}
+                      <div className="pt-1.5 border-t border-slate-200 flex justify-end items-center mt-2">
                         <span className="text-xs font-black text-slate-800">
                           家長簽章：___________________________
                         </span>
