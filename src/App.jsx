@@ -1393,7 +1393,6 @@ const App = () => {
           </div>
         );
       })()}
-      {/* 專屬 A4 列印排版引擎 (強制 1 頁 2 人不超頁版) */}
       {/* 專屬 A4 列印排版引擎 (實體 A5 獨立雙卡片版) */}
       <div className="hidden print:block bg-white text-black font-sans p-0 m-0">
         <style dangerouslySetInnerHTML={{ __html: `
@@ -1483,11 +1482,28 @@ const App = () => {
             });
           }
 
-          // 2. 省紙雙人模式：每兩位學生強制綁定一頁
+          // 2. 省紙雙人模式：36 項以內才湊對雙人，超過 36 項獨立單人
           const pairs = [];
-          for (let i = 0; i < targetStudents.length; i += 2) {
-            pairs.push(targetStudents.slice(i, i + 2));
-          }
+          let currentPair = [];
+          targetStudents.forEach((s) => {
+            const sd = monthlyStats[s.id] || { issues: [] };
+            const isHeavy = (sd.issues?.length || 0) > 36;
+
+            if (isHeavy) {
+              if (currentPair.length > 0) {
+                pairs.push(currentPair);
+                currentPair = [];
+              }
+              pairs.push([s]);
+            } else {
+              currentPair.push(s);
+              if (currentPair.length === 2) {
+                pairs.push(currentPair);
+                currentPair = [];
+              }
+            }
+          });
+          if (currentPair.length > 0) pairs.push(currentPair);
 
           return pairs.map((pair, pIdx) => (
             <div key={pIdx} className="print-page-wrapper">
