@@ -1394,45 +1394,48 @@ const App = () => {
         );
       })()}
       {/* 專屬 A4 列印排版引擎 (強制 1 頁 2 人不超頁版) */}
+      {/* 專屬 A4 列印排版引擎 (實體 A5 獨立雙卡片版) */}
       <div className="hidden print:block bg-white text-black font-sans p-0 m-0">
         <style dangerouslySetInnerHTML={{ __html: `
           @page {
             size: A4 portrait;
-            margin: 8mm 10mm;
+            margin: 6mm 10mm;
           }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .print-page-duo {
+            .print-page-wrapper {
+              height: 280mm;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              box-sizing: border-box;
               page-break-after: always;
               break-after: page;
+            }
+            .print-card-duo {
+              height: 133mm;
+              max-height: 133mm;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              border: 2px solid #1e293b;
+              border-radius: 12px;
+              padding: 14px 18px;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .print-card-single {
               height: 275mm;
+              box-sizing: border-box;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
-              box-sizing: border-box;
-            }
-            .print-page-duo.last-page {
-              page-break-after: auto;
-              break-after: auto;
-            }
-            .card-half {
-              height: 48%;
-              max-height: 48%;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              page-break-inside: avoid;
-              break-inside: avoid;
-              box-sizing: border-box;
-            }
-            .card-full {
-              min-height: 260mm;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              page-break-inside: avoid;
-              break-inside: avoid;
-              box-sizing: border-box;
+              border: 2px solid #1e293b;
+              border-radius: 12px;
+              padding: 20px;
+              page-break-after: always;
+              break-after: page;
             }
           }
         `}} />
@@ -1442,107 +1445,111 @@ const App = () => {
           const startStr = reportStart.replace(/-/g, '/');
           const endStr = reportEnd.replace(/-/g, '/');
 
-          // 分頁計算引擎
-          const pages = [];
+          // 1. 獨立滿版模式：一人一張 A4
           if (printLayoutMode === 'single') {
-            targetStudents.forEach(s => pages.push([s]));
-          } else {
-            let currentPage = [];
-            targetStudents.forEach((s) => {
-              const sd = monthlyStats[s.id] || { issues: [] };
-              const isHuge = sd.issues.length >= 12; // 超過 12 項才單獨一頁
-
-              if (isHuge) {
-                if (currentPage.length > 0) {
-                  pages.push(currentPage);
-                  currentPage = [];
-                }
-                pages.push([s]);
-              } else {
-                currentPage.push(s);
-                if (currentPage.length === 2) {
-                  pages.push(currentPage);
-                  currentPage = [];
-                }
-              }
+            return targetStudents.map(s => {
+              const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+              return (
+                <div key={s.id} className="print-card-single">
+                  <div>
+                    <div className="border-b-2 border-slate-800 pb-2 mb-3 flex justify-between items-baseline">
+                      <h2 className="text-3xl font-black text-slate-900">{s.name} 生活與學習表現紀錄</h2>
+                      <p className="text-sm font-semibold text-slate-500">統計期間：{startStr} ～ {endStr}</p>
+                    </div>
+                    <div className="grid grid-cols-2 text-sm font-bold bg-slate-100 p-2.5 rounded-xl mb-4 border border-slate-300">
+                      <div>出席狀況：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
+                      <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
+                    </div>
+                    <div>
+                      {sd.issues.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                          {sd.issues.map((iss, i) => (
+                            <div key={i} className="flex items-start text-xs font-medium border border-slate-300 rounded-lg p-2 bg-slate-50/50">
+                              <span className="inline-block w-3.5 h-3.5 border-2 border-slate-700 rounded-sm mr-1.5 shrink-0 mt-0.5" />
+                              <span className="leading-tight break-all">{iss}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-12 text-center text-slate-700 font-black text-xl">準時繳交各項作業</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-end items-center">
+                    <span className="text-base font-black text-slate-800">家長簽章：___________________________</span>
+                  </div>
+                </div>
+              );
             });
-            if (currentPage.length > 0) pages.push(currentPage);
           }
 
-          return pages.map((pageGroup, pageIndex) => {
-            const isLastPage = pageIndex === pages.length - 1;
-            const isSolo = pageGroup.length === 1;
+          // 2. 省紙雙人模式：每兩位學生強制綁定一頁
+          const pairs = [];
+          for (let i = 0; i < targetStudents.length; i += 2) {
+            pairs.push(targetStudents.slice(i, i + 2));
+          }
 
-            return (
-              <div 
-                key={pageIndex} 
-                className={`print-page-duo w-full ${isLastPage ? 'last-page' : ''}`}
-              >
-                {pageGroup.map((s, itemIndex) => {
-                  const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
-
-                  return (
-                    <React.Fragment key={s.id}>
-                      <div className={`${isSolo ? 'card-full' : 'card-half'} border-2 border-slate-800 rounded-2xl p-4 bg-white`}>
-                        <div>
-                          {/* 抬頭 */}
-                          <div className="border-b-2 border-slate-800 pb-1.5 mb-2 flex justify-between items-baseline">
-                            <h2 className="text-2xl font-black tracking-wide text-slate-900">
-                              {s.name} 生活與學習表現紀錄
-                            </h2>
-                            <p className="text-xs font-semibold text-slate-500">
-                              統計期間：{startStr} ～ {endStr}
-                            </p>
-                          </div>
-
-                          {/* 出席與繳交狀況 */}
-                          <div className="grid grid-cols-2 text-xs font-bold bg-slate-100 p-2 rounded-xl mb-2.5 border border-slate-300">
-                            <div>出席狀況：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
-                            <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
-                          </div>
-
-                          {/* 方格紀錄清單 */}
-                          <div>
-                            {sd.issues.length > 0 ? (
-                              <div className="grid grid-cols-3 gap-x-3 gap-y-1.5">
-                                {sd.issues.map((iss, i) => (
-                                  <div key={i} className="flex items-start text-xs font-medium border border-slate-300 rounded-lg p-1.5 bg-slate-50/50">
-                                    <span className="inline-block w-3.5 h-3.5 border-2 border-slate-700 rounded-sm mr-1.5 shrink-0 mt-0.5" />
-                                    <span className="leading-tight break-all">{iss}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="py-4 text-center text-slate-700 font-black text-base">
-                                準時繳交各項作業
-                              </div>
-                            )}
-                          </div>
+          return pairs.map((pair, pIdx) => (
+            <div key={pIdx} className="print-page-wrapper">
+              {pair.map((s, itemIdx) => {
+                const sd = monthlyStats[s.id] || { onTime: 0, late: 0, sick: 0, personal: 0, fullDoneDays: 0, lateDays: 0, missingDays: 0, issues: [] };
+                return (
+                  <React.Fragment key={s.id}>
+                    <div className="print-card-duo">
+                      <div>
+                        {/* 抬頭 */}
+                        <div className="border-b-2 border-slate-800 pb-1 mb-1.5 flex justify-between items-baseline">
+                          <h2 className="text-xl font-black text-slate-900">{s.name} 生活與學習表現紀錄</h2>
+                          <p className="text-xs font-semibold text-slate-500">統計期間：{startStr} ～ {endStr}</p>
                         </div>
 
-                        {/* 底部家長簽章欄位 */}
-                        <div className="pt-2 border-t border-slate-200 flex justify-end items-center mt-2">
-                          <span className="text-sm font-black text-slate-800">
-                            家長簽章：___________________________
-                          </span>
+                        {/* 出席與繳交狀況 */}
+                        <div className="grid grid-cols-2 text-xs font-bold bg-slate-100 p-1.5 rounded-lg mb-2 border border-slate-300">
+                          <div>出席狀況：準時 {sd.onTime} 天 / 遲到 {sd.late} 天 / 請假 {sd.sick + sd.personal} 天</div>
+                          <div>繳交狀況：齊全 {sd.fullDoneDays} 天 / 遲交 {sd.lateDays} 天 / 缺交 {sd.missingDays} 天</div>
+                        </div>
+
+                        {/* 方格清單 */}
+                        <div>
+                          {sd.issues.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-x-2 gap-y-1">
+                              {sd.issues.map((iss, i) => (
+                                <div key={i} className="flex items-start text-[11px] font-medium border border-slate-300 rounded p-1 bg-slate-50/50">
+                                  <span className="inline-block w-3 h-3 border border-slate-700 rounded-sm mr-1 shrink-0 mt-0.5" />
+                                  <span className="leading-tight break-all">{iss}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-5 text-center text-slate-700 font-black text-sm">
+                              準時繳交各項作業
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* 雙人模式下的裁切虛線標記 */}
-                      {!isSolo && itemIndex === 0 && (
-                        <div className="w-full my-1 flex items-center justify-center relative">
-                          <div className="w-full border-t border-dashed border-slate-400"></div>
-                          <span className="absolute bg-white px-3 text-[10px] font-bold text-slate-400 tracking-widest">
-                            ✂ 裁切線 (第 {pageIndex + 1} 頁)
-                          </span>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            );
-          });
+                      {/* 底部家長簽章 */}
+                      <div className="pt-1.5 border-t border-slate-200 flex justify-end items-center">
+                        <span className="text-xs font-black text-slate-800">
+                          家長簽章：___________________________
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 兩張卡片之間的裁切虛線 */}
+                    {itemIdx === 0 && pair.length > 1 && (
+                      <div className="w-full my-0.5 flex items-center justify-center relative">
+                        <div className="w-full border-t border-dashed border-slate-400"></div>
+                        <span className="absolute bg-white px-2 text-[10px] font-bold text-slate-400">
+                          ✂ 裁切線
+                        </span>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          ));
         })()}
       </div>
     </div>
