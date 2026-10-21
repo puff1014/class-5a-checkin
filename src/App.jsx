@@ -1286,9 +1286,8 @@ const App = () => {
         const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
         const liveMonthData = monthlyStats[targetId];
         return (
-          className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-2 sm:p-6 md:p-8 print:hidden"
-            className="bg-white rounded-3xl sm:rounded-[4rem] w-full max-w-[95vw] sm:max-w-[90vw] p-4 sm:p-8 md:p-10 shadow-2xl relative flex flex-col max-h-[95vh] sm:max-h-[90vh] border-4 sm:border-[12px] border-sky-100/50"
-              
+          <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-2 sm:p-6 md:p-8 print:hidden">
+              <div className="bg-white rounded-3xl sm:rounded-[4rem] w-full max-w-[95vw] sm:max-w-[90vw] p-4 sm:p-8 md:p-10 shadow-2xl relative flex flex-col max-h-[95vh] sm:max-h-[90vh] border-4 sm:border-[12px] border-sky-100/50">              
               <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
                 <h3 className="text-2xl sm:text-4xl md:text-6xl font-black text-sky-900 leading-none flex flex-wrap items-center gap-2 sm:gap-6">
                     {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
