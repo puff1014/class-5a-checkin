@@ -109,7 +109,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       const timer = setTimeout(() => {
         onComplete();
       }, 5000); 
-      return () => clearTimeout(timer);
+      ) => clearTimeout(timer);
     }
   }, [step, onComplete]);
 
@@ -988,10 +988,10 @@ const App = () => {
         )}
       </header>
 
-      <main className="flex flex-col lg:flex-row p-4 gap-2 print:hidden items-stretch pb-12">
-        <div style={{ width: `${w1}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
+      <main className="flex flex-col lg:flex-row p-2 sm:p-4 gap-4 lg:gap-2 print:hidden items-stretch pb-12">
+        <div style={{ width: typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : `${w1}%` }} className="w-full lg:w-auto bg-white rounded-2xl lg:rounded-[3rem] shadow-sm p-3 sm:p-5 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><UserCheck size={40}/> 航海員簽到</h2>
-          <div className="grid grid-cols-2 gap-4 flex-1">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 flex-1">
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const attStat = getFinalAttStatus(s.id, d);
@@ -1025,7 +1025,7 @@ const App = () => {
                   className={`min-h-[96px] rounded-[1.8rem] flex flex-col items-center justify-center transition-all border-b-8 active:border-b-0 relative overflow-hidden ${color}`}
                 >
                   {d?.mood && <span className="absolute top-2 right-3 text-3xl opacity-80" title="今日心情">{getMoodEmoji(d.mood.quadrant)}</span>}
-                  <span className="text-5xl font-black">{maskName(s.name)}</span>
+                  <span className="text-2xl sm:text-3xl md:text-5xl font-black">{maskName(s.name)}</span>
                   {d?.checkinTime && <span className={`text-2xl font-black mt-1 ${attStat === 'late' ? 'text-pink-700' : (attStat === 'on-time' ? 'text-emerald-500' : '')}`}>{textStatus}</span>}
                 </button>
               );
@@ -1033,9 +1033,9 @@ const App = () => {
           </div>
         </div>
 
-        <div className="w-4 mx-1 cursor-col-resize flex items-center justify-center hover:bg-sky-200 rounded-full transition-colors group shrink-0" onMouseDown={(e) => { const startX = e.clientX; const startW = w1; const move = (ev) => setW1(Math.max(15, Math.min(startW + ((ev.clientX - startX) / window.innerWidth) * 100, 40))); const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); }}><GripVertical className="text-sky-300 group-hover:text-sky-600"/></div>
+        className="hidden md:flex w-4 mx-1 cursor-col-resize items-center justify-center hover:bg-sky-200 rounded-full transition-colors group shrink-0"
 
-        <div style={{ width: `${w2}%` }} className="bg-white rounded-[3rem] shadow-sm p-5 flex flex-col border border-sky-50 shrink-0">
+        <div style={{ width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : `${w2}%` }} className="w-full md:w-auto bg-white rounded-2xl md:rounded-[3rem] shadow-sm p-3 md:p-5 flex flex-col border border-sky-50 shrink-0">
           <h2 className="text-3xl font-black mb-6 text-sky-800 flex items-center gap-3 px-2 shrink-0"><LayoutDashboard size={40}/> 今日任務進度</h2>
           <div className="flex flex-col gap-4 flex-1 justify-between">
             {STUDENTS.map(s => {
@@ -1161,13 +1161,13 @@ const App = () => {
         </div>
       </main>
 
-      <section className="mx-4 mb-12 bg-white rounded-[3rem] p-8 shadow-2xl border-4 border-sky-100 flex flex-col print:hidden">
+      <section className="mx-2 sm:mx-4 mb-8 sm:mb-12 bg-white rounded-2xl sm:rounded-[3rem] p-3 sm:p-6 md:p-8 shadow-2xl border-2 sm:border-4 border-sky-100 flex flex-col print:hidden">
         <div className="flex flex-col gap-4 mb-6 px-2 border-b-2 border-sky-100 pb-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h3 className="text-4xl font-black text-sky-900 flex items-center gap-5">
               <Calendar size={48} className="text-sky-600"/> 學習表現分析報表
             </h3>
-            <div className="flex gap-4 items-center">
+            <div className="flex flex-wrap gap-2 sm:gap-4 items-center w-full md:w-auto">
               <div className="flex items-center gap-2 bg-sky-50 p-2 rounded-2xl border-2 border-sky-200 shadow-sm">
                 <input type="date" value={reportStart} onChange={(e) => setReportStart(e.target.value)} className="bg-transparent text-sky-700 font-black text-xl outline-none cursor-pointer px-2" />
                 <span className="text-sky-400 font-bold">至</span>
@@ -1237,8 +1237,8 @@ const App = () => {
             </div>
           )}
         </div>
-        <div className="overflow-auto rounded-[2rem] border-2 border-sky-50">
-          <table className="w-full text-center table-fixed border-collapse">
+        <div className="w-full overflow-x-auto rounded-2xl sm:rounded-[2rem] border-2 border-sky-50 touch-pan-x">
+          <table className="w-full min-w-[700px] text-center border-collapse">
             <thead className="text-white shadow-md">
               <tr className="text-2xl font-black"><th className="p-5 bg-sky-950 border-r border-sky-800 sticky left-0 z-50 w-48 text-left pl-10">姓名</th><th className="p-5 bg-sky-700 border-r border-sky-600 w-[35%]">出席狀況</th><th className="p-5 bg-blue-600">任務繳交 (天數)</th></tr>
             </thead>
@@ -1286,11 +1286,11 @@ const App = () => {
         const targetId = activeStudent ? activeStudent.id : viewOnlyStudent.student.id;
         const liveMonthData = monthlyStats[targetId];
         return (
-          <div className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-8 print:hidden">
-            <div className="bg-white rounded-[4rem] w-full max-w-[90vw] p-10 shadow-2xl relative flex flex-col max-h-[90vh] border-[12px] border-sky-100/50">
+          className="fixed inset-0 bg-sky-900/95 backdrop-blur-xl z-[300] flex items-center justify-center p-2 sm:p-6 md:p-8 print:hidden"
+            className="bg-white rounded-3xl sm:rounded-[4rem] w-full max-w-[95vw] sm:max-w-[90vw] p-4 sm:p-8 md:p-10 shadow-2xl relative flex flex-col max-h-[95vh] sm:max-h-[90vh] border-4 sm:border-[12px] border-sky-100/50"
               
               <div className="flex justify-between items-center mb-6 border-b-4 border-sky-50 pb-6 shrink-0">
-                <h3 className="text-6xl font-black text-sky-900 leading-none flex items-center gap-6">
+                <h3 className="text-2xl sm:text-4xl md:text-6xl font-black text-sky-900 leading-none flex flex-wrap items-center gap-2 sm:gap-6">
                     {maskName(activeStudent?.name || viewOnlyStudent?.student.name)} 
                     <span className="text-2xl text-sky-500 font-bold tracking-widest bg-sky-50 px-4 py-2 rounded-full border border-sky-100">
                         {viewOnlyStudent?.isHistory ? `區間學習歷程` : `任務確認 - ${formatDate(viewDate)}`}
@@ -1337,10 +1337,10 @@ const App = () => {
                 ) : viewOnlyStudent && user ? (
                   <div className="flex flex-col gap-6">
                     <div className="bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-200 flex items-center gap-6"><span className="text-4xl font-black text-slate-700">出席狀態：</span><button onClick={() => cycleManualAtt(targetId)} className="flex items-center gap-3 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(getFinalAttStatus(targetId, attendance[targetId]), 'att')}{attendance[targetId]?.manualAtt && <span className="text-xl font-bold text-indigo-500 flex items-center gap-1 bg-indigo-50 px-3 py-1 rounded-full"><Edit3 size={20}/> 手動修改</span>}</button></div>
-                    <div className="grid grid-cols-3 gap-4">{prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); const d = attendance[targetId]; const fStat = getFinalTaskStatus(targetId, cleanT, d); const isManual = !!d?.manualTasks?.[cleanT]; return (<div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors"><span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span><button onClick={() => cycleManualTask(targetId, cleanT)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(fStat, 'task')}{isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}</button></div>)})}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-6">{activeStudent ? prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); return (<label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}><input type="checkbox" checked={!!selectedTasks[cleanT]} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-blue-600 cursor-pointer" /><span className="text-4xl font-black leading-tight">{cleanT}</span></label>)}) : (<div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">{(() => { const d = attendance[targetId]; const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, typeof t === 'string' ? t.trim() : t.text.trim(), d) === 'missing'); const isAllDone = missingTasks.length === 0 && prevTasks.length > 0; return isAllDone ? (<div className="flex flex-col items-center gap-6 animate-fade-in my-auto"><Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" /><p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p></div>) : (<div className="grid grid-cols-3 gap-6 w-full px-4"><div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4"><XOctagon size={48} className="text-red-600" /><p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p></div>{missingTasks.map((t, idx) => (<div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{typeof t === 'string' ? t.trim() : t.text.trim()}</span></div>))}</div>); })()}</div>)}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                 )}
               </div>
               {activeStudent && (() => {
@@ -1363,28 +1363,29 @@ const App = () => {
                         </span>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-6 h-28">
-                      <button 
-                        disabled={!canCheckIn}
-                        onClick={() => submitCheckin('present')} 
-                        className={`${canCheckIn ? 'bg-sky-500 hover:bg-sky-600 shadow-xl active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
-                      >
-                        確認打卡
-                      </button>
-                      <button 
-                        disabled={!canCheckIn}
-                        onClick={() => submitCheckin('sick')} 
-                        className={`${canCheckIn ? 'bg-purple-400 hover:bg-purple-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
-                      >
-                        病假
-                      </button>
-                      <button 
-                        disabled={!canCheckIn}
-                        onClick={() => submitCheckin('personal')} 
-                        className={`${canCheckIn ? 'bg-orange-400 hover:bg-orange-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-[2rem] text-4xl font-black transition-all`}
-                      >
-                        事假
-                      </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 sm:h-28">
+            <button
+              disabled={!canCheckIn}
+              onClick={() => submitCheckin('present')}
+              className={`${canCheckIn ? 'bg-sky-500 hover:bg-sky-600 shadow-xl active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-2xl sm:rounded-[2rem] py-3 sm:py-0 text-xl sm:text-3xl md:text-4xl font-black transition-all`}
+            >
+              確認打卡
+            </button>
+            <button
+              disabled={!canCheckIn}
+              onClick={() => submitCheckin('sick')}
+              className={`${canCheckIn ? 'bg-purple-400 hover:bg-purple-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-2xl sm:rounded-[2rem] py-3 sm:py-0 text-xl sm:text-3xl md:text-4xl font-black transition-all`}
+            >
+              病假
+            </button>
+            <button
+              disabled={!canCheckIn}
+              onClick={() => submitCheckin('personal')}
+              className={`${canCheckIn ? 'bg-orange-400 hover:bg-orange-500 shadow-md active:scale-95' : 'bg-slate-300 cursor-not-allowed opacity-50'} text-white rounded-2xl sm:rounded-[2rem] py-3 sm:py-0 text-xl sm:text-3xl md:text-4xl font-black transition-all`}
+            >
+              事假
+            </button>
+          </div>
                     </div>
                   </div>
                 );
