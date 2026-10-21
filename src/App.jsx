@@ -109,7 +109,7 @@ const MoodStation = ({ student, onSave, onComplete, onClose }) => {
       const timer = setTimeout(() => {
         onComplete();
       }, 5000); 
-      ) => clearTimeout(timer);
+      return () => clearTimeout(timer);
     }
   }, [step, onComplete]);
 
