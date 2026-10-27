@@ -34,75 +34,75 @@ const [selectedWord, setSelectedWord] = useState('');
 const [dailyGuide, setDailyGuide] = useState('');
 
 const moodData = {
-red: {
-id: 'red',
-power: ,
-mood: ,
-title: '高電力 / 起伏心情',
-description: '腦袋轉個不停，身體感覺緊繃',
-icon: ,
-words: [
-'暴怒\nEnraged', '驚慌失措\nPanicked', '備感壓力\nStressful', '緊張不安\nJittery', '震驚\nShocked',
-'憤怒\nLivid', '氣沖沖\nFurious', '沮喪\nFrustrated', '神經緊繃\nTense', '錯愕\nStunned',
-'火冒三丈\nFuming', '受到驚嚇\nAnxious', '生氣\nAngry', '緊張\nNervous', '坐立難安\nRestless',
-'焦慮\nAnxious', '憂慮不安\nApprehensive', '擔心\nWorried', '被激怒\nIrritated', '被惹惱\nAnnoyed',
-'反感\nRepulsed', '困擾\nTroubled', '在意\nConcerned', '忐忑不安\nUneasy', '不太高興\nPeeved'
-],
-guides: [ '閉上眼，慢慢從 5 倒數到 1。', '把手握緊再放鬆，感受壓力的釋放。', '慢慢喝一口水，讓大腦冷卻一下。', '用力聳起肩膀，然後瞬間放掉。', '深呼吸一次，感覺緊繃隨著吐氣慢慢散開。' ],
-color: 'bg-red-500', hover: 'hover:bg-red-600', text: 'text-white'
-},
-yellow: {
-id: 'yellow',
-power: ,
-mood: ,
-title: '高電力 / 陽光心情',
-description: '充滿動力、躍躍欲試',
-icon: ,
-words: [
-'驚喜\nSurprised', '振奮\nUpbeat', '歡慶\nFestive', '心花怒放\nExhilarated', '欣喜若狂\nEcstatic',
-'亢奮\nHyper', '愉悅\nCheerful', '有動力\nMotivated', '受到啟發\nInspired', '興高采烈\nElated',
-'精力充沛\nEnergized', '生氣勃勃\nLively', '興奮\nExcited', '樂觀\nOptimistic', '熱情洋溢\nEnthusiastic',
-'開心\nPleased', '集中\nFocused', '快樂\nHappy', '驕傲\nProud', '興奮激動\nThrilled',
-'令人愉悅\nPleasant', '欣喜\nJoyful', '有希望\nHopeful', '好玩\nPlayful', '幸福\nBlissful'
-],
-guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '輕輕握一下拳頭，感受體內飽滿的行動力。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
-color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', text: 'text-white'
-},
-blue: {
-id: 'blue',
-power: ,
-mood: ,
-title: '低電力 / 起伏心情',
-description: '電力較低、悶悶的',
-icon: ,
-words: [
-'厭惡\nDisgusted', '死氣沉沉\nGlum', '失望\nDisappointed', '低落\nDown', '提不起勁\nApathetic',
-'悲觀\nPessimistic', '鬱鬱寡歡\nMorose', '洩氣\nDiscouraged', '難過\nSad', '無聊\nBored',
-'疏離\nAlienated', '悲慘\nMiserable', '孤單\nLonely', '沮喪\nDisheartened', '疲累\nTired',
-'意志消沉\nDespondent', '抑鬱\nDepressed', '悶悶不樂\nSullen', '精疲力竭\nExhausted', '疲勞\nFatigued',
-'絕望\nDespairing', '無望\nHopeless', '孤寂\nDesolate', '疲憊不堪\nSpent', '枯竭\nDrained'
-],
-guides: [ '站起來稍微伸展一下，讓電力回升。', '挺起胸膛，做一個大大的深呼吸。', '慢慢轉動一下脖子，釋放僵硬感。', '先完成一件最簡單的小事，找回節奏。', '雙手互搓 5 秒，感受手心的溫暖。' ],
-color: 'bg-blue-500', hover: 'hover:bg-blue-600', text: 'text-white'
-},
-green: {
-id: 'green',
-power: ,
-mood: ,
-title: '低電力 / 陽光心情',
-description: '心情平穩、安靜放鬆',
-icon: ,
-words: [
-'自在\nAt Ease', '隨和\nEasygoing', '知足\nContent', '充滿愛\nLoving', '心滿意足\nFulfilled',
-'平靜\nCalm', '安全\nSecure', '滿意\nSatisfied', '滿懷感激\nGrateful', '感動\nTouched',
-'放鬆\nRelaxed', '冷靜\nChill', '寧靜\nRestful', '有福氣\nBlessed', '平衡\nBalanced',
-'柔和\nMellow', '沉思\nThoughtful', '平和\nPeaceful', '舒服\nComfortable', '無憂無慮\nCarefree',
-'昏昏欲睡\nSleepy', '安於現狀\nComplacent', '恬淡平靜\nTranquil', '舒適\nCozy', '安詳\nSerene'
-],
-guides: [ '雙手平放桌面，感受掌心的穩定。', '調整坐姿，讓身體感覺更紮實。', '閉上眼，給自己數三下深呼吸的時間。', '整理一下桌面，讓思緒跟著變整齊。', '用平穩的節奏，開啟今日的任務。' ],
-color: 'bg-green-500', hover: 'hover:bg-green-600', text: 'text-white'
-}
-};
+    red: {
+      id: 'red',
+      power: <BatteryFull className="w-12 h-12" />,
+      mood: <Frown className="w-12 h-12" />,
+      title: '高電力 / 起伏心情',
+      description: '腦袋轉個不停，身體感覺緊繃',
+      icon: <Zap className="w-20 h-20" />,
+      words: [
+        '暴怒\nEnraged', '驚慌失措\nPanicked', '備感壓力\nStressful', '緊張不安\nJittery', '震驚\nShocked',
+        '憤怒\nLivid', '氣沖沖\nFurious', '沮喪\nFrustrated', '神經緊繃\nTense', '錯愕\nStunned',
+        '火冒三丈\nFuming', '受到驚嚇\nAnxious', '生氣\nAngry', '緊張\nNervous', '坐立難安\nRestless',
+        '焦慮\nAnxious', '憂慮不安\nApprehensive', '擔心\nWorried', '被激怒\nIrritated', '被惹惱\nAnnoyed',
+        '反感\nRepulsed', '困擾\nTroubled', '在意\nConcerned', '忐忑不安\nUneasy', '不太高興\nPeeved'
+      ],
+      guides: [ '閉上眼，慢慢從 5 倒數到 1。', '把手握緊再放鬆，感受壓力的釋放。', '慢慢喝一口水，讓大腦冷卻一下。', '用力聳起肩膀，然後瞬間放掉。', '深呼吸一次，感覺緊繃隨著吐氣慢慢散開。' ],
+      color: 'bg-red-500', hover: 'hover:bg-red-600', text: 'text-white'
+    },
+    yellow: {
+      id: 'yellow',
+      power: <BatteryFull className="w-12 h-12" />,
+      mood: <Smile className="w-12 h-12" />,
+      title: '高電力 / 陽光心情',
+      description: '充滿動力、躍躍欲試',
+      icon: <Sun className="w-20 h-20" />,
+      words: [
+        '驚喜\nSurprised', '振奮\nUpbeat', '歡慶\nFestive', '心花怒放\nExhilarated', '欣喜若狂\nEcstatic',
+        '亢奮\nHyper', '愉悅\nCheerful', '有動力\nMotivated', '受到啟發\nInspired', '興高采烈\nElated',
+        '精力充沛\nEnergized', '生氣勃勃\nLively', '興奮\nExcited', '樂觀\nOptimistic', '熱情洋溢\nEnthusiastic',
+        '開心\nPleased', '集中\nFocused', '快樂\nHappy', '驕傲\nProud', '興奮激動\nThrilled',
+        '令人愉悅\nPleasant', '欣喜\nJoyful', '有希望\nHopeful', '好玩\nPlayful', '幸福\nBlissful'
+      ],
+      guides: [ '帶著這份電力，挑戰今天的目標。', '在心裡對自己說：我今天可以做得很棒！', '輕輕握一下拳頭，感受體內飽滿的行動力。', '挺起胸膛，感受身體充滿前進的動力。', '將這份活力轉化為專注，迎接今日挑戰。' ],
+      color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', text: 'text-white'
+    },
+    blue: {
+      id: 'blue',
+      power: <BatteryLow className="w-12 h-12" />,
+      mood: <Frown className="w-12 h-12" />,
+      title: '低電力 / 起伏心情',
+      description: '電力較低、悶悶的',
+      icon: <Cloud className="w-20 h-20" />,
+      words: [
+        '厭惡\nDisgusted', '死氣沉沉\nGlum', '失望\nDisappointed', '低落\nDown', '提不起勁\nApathetic',
+        '悲觀\nPessimistic', '鬱鬱寡歡\nMorose', '洩氣\nDiscouraged', '難過\nSad', '無聊\nBored',
+        '疏離\nAlienated', '悲慘\nMiserable', '孤單\nLonely', '沮喪\nDisheartened', '疲累\nTired',
+        '意志消沉\nDespondent', '抑鬱\nDepressed', '悶悶不樂\nSullen', '精疲力竭\nExhausted', '疲勞\nFatigued',
+        '絕望\nDespairing', '無望\nHopeless', '孤寂\nDesolate', '疲憊不堪\nSpent', '枯竭\nDrained'
+      ],
+      guides: [ '站起來稍微伸展一下，讓電力回升。', '挺起胸膛，做一個大大的深呼吸。', '慢慢轉動一下脖子，釋放僵硬感。', '先完成一件最簡單的小事，找回節奏。', '雙手互搓 5 秒，感受手心的溫暖。' ],
+      color: 'bg-blue-500', hover: 'hover:bg-blue-600', text: 'text-white'
+    },
+    green: {
+      id: 'green',
+      power: <BatteryLow className="w-12 h-12" />,
+      mood: <Smile className="w-12 h-12" />,
+      title: '低電力 / 陽光心情',
+      description: '心情平穩、安靜放鬆',
+      icon: <Leaf className="w-20 h-20" />,
+      words: [
+        '自在\nAt Ease', '隨和\nEasygoing', '知足\nContent', '充滿愛\nLoving', '心滿意足\nFulfilled',
+        '平靜\nCalm', '安全\nSecure', '滿意\nSatisfied', '滿懷感激\nGrateful', '感動\nTouched',
+        '放鬆\nRelaxed', '冷靜\nChill', '寧靜\nRestful', '有福氣\nBlessed', '平衡\nBalanced',
+        '柔和\nMellow', '沉思\nThoughtful', '平和\nPeaceful', '舒服\nComfortable', '無憂無慮\nCarefree',
+        '昏昏欲睡\nSleepy', '安於現狀\nComplacent', '恬淡平靜\nTranquil', '舒適\nCozy', '安詳\nSerene'
+      ],
+      guides: [ '雙手平放桌面，感受掌心的穩定。', '調整坐姿，讓身體感覺更紮實。', '閉上眼，給自己數三下深呼吸的時間。', '整理一下桌面，讓思緒跟著變整齊。', '用平穩的節奏，開啟今日的任務。' ],
+      color: 'bg-green-500', hover: 'hover:bg-green-600', text: 'text-white'
+    }
+  };
 
 useEffect(() => {
 if (step === 3) {
