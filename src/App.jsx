@@ -9,7 +9,7 @@ const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", auth
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
 const ROUTINE_TASKS = ["帶學用品", "複習+預習", "訂正功課"];
-const ROUTINE_START_DATE = '2026-10-27'; // 測試期先設為今天，確認無誤後再改為 2026-11-01
+const ROUTINE_START_DATE = '2026-11-01'; // 測試期先設為今天，確認無誤後再改為 2026-11-01
 const QUICK_TAGS = ["預習數課", "數習", "數筆記", "背成+小", "聯絡簿", "國甲", "國乙", "國卷", "考聽寫", "國習", "國隨", "作文", "閱讀B", "國預習單", "背課文", "念課文*3+語詞*5", "帶學用品", "複習+預習",  "訂正功課", "閱讀(  )分+3C(  )分"];
 
 const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
