@@ -1346,7 +1346,7 @@ return (
                       </div>
                   ))}
               </div>
-            ) : viewOnlyStudent && user ? (
+            ) : ver ? (
               <div className="flex flex-col gap-6">
                 <div className="bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-200 flex items-center gap-6">
                   <span className="text-4xl font-black text-slate-700">出席狀態：</span>
