@@ -10,7 +10,7 @@ const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }
 const SPECIAL_IDS = ['5', '7', '8'];
 const QUICK_TAGS = ["預習數課", "數習", "數筆記", "背成+小", "聯絡簿", "國甲", "國乙", "國卷", "考聽寫", "國習", "國隨", "作文", "閱讀B", "國預習單", "背課文", "念課文3+語詞5", "帶學用品", "複習+預習",  "訂正功課", "閱讀(  )分+3C(  )分"];
 
-const formatDate = (d) => ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')};
+const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const maskName = (n) => n ? n[0] + "O" + (n[2] || "") : "";
 const getCurrentAcademicYear = () => {
 const now = new Date();
