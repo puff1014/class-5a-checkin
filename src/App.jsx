@@ -1353,7 +1353,7 @@ const App = () => {
                     <div className="grid grid-cols-3 gap-4">{prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); const d = attendance[targetId]; const fStat = getFinalTaskStatus(targetId, cleanT, d); const isManual = !!d?.manualTasks?.[cleanT]; return (<div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors"><span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span><button onClick={() => cycleManualTask(targetId, cleanT)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(fStat, 'task')}{isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}</button></div>)})}</div>
                   </div>
                 ) : (
-                  {activeStudent ? (() => {
+                  activeStudent ? (() => {
   // 將任務分流為：作業（前半段）與自主常規（後半段）
   const assignmentTasks = prevTasks.filter(t => {
     const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
@@ -1439,7 +1439,7 @@ const App = () => {
       );
     })()}
   </div>
-)}
+)
               {activeStudent && (() => {
                 const targetDateStr = formatDate(viewDate);
                 const todayStr = formatDate(new Date());
