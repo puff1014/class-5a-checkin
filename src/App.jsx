@@ -1439,7 +1439,7 @@ const App = () => {
       );
     })()}
   </div>
-)
+)}
               {activeStudent && (() => {
                 const targetDateStr = formatDate(viewDate);
                 const todayStr = formatDate(new Date());
