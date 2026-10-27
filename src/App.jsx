@@ -8,6 +8,8 @@ const APP_VERSION = "V22.0.5_Sync_Fixed_Edition";
 const firebaseConfig = { apiKey: "AIzaSyArwz6gPeW9lNq_8LOfnKYwZmkRN-Wgtb8", authDomain: "class-5a-app.firebaseapp.com", projectId: "class-5a-app", storageBucket: "class-5a-app.firebasestorage.app", messagingSenderId: "828328241350", appId: "1:828328241350:web:5d39d529209f87a2540fc7" };
 const STUDENTS = [{ id: '1', name: '陳昕佑' }, { id: '2', name: '徐偉綸' }, { id: '3', name: '蕭淵群' }, { id: '4', name: '吳秉晏' }, { id: '5', name: '呂秉蔚' }, { id: '6', name: '吳家昇' }, { id: '7', name: '翁芷儀' }, { id: '8', name: '鄭筱妍' }, { id: '9', name: '周筱涵' }, { id: '10', name: '李婕妤' }];
 const SPECIAL_IDS = ['5', '7', '8'];
+const ROUTINE_TASKS = ["帶學用品", "複習+預習", "訂正功課"];
+const ROUTINE_START_DATE = '2026-10-27'; // 測試期先設為今天，確認無誤後再改為 2026-11-01
 const QUICK_TAGS = ["預習數課", "數習", "數筆記", "背成+小", "聯絡簿", "國甲", "國乙", "國卷", "考聽寫", "國習", "國隨", "作文", "閱讀B", "國預習單", "背課文", "念課文*3+語詞*5", "帶學用品", "複習+預習",  "訂正功課", "閱讀(  )分+3C(  )分"];
 
 const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -366,9 +368,13 @@ const App = () => {
             const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
             return !text.startsWith('※') && !text.startsWith(' ');
           });
-          setPrevTasks(filteredTasks);
+          const finalTasks = dateKey >= ROUTINE_START_DATE 
+            ? [...filteredTasks, ...ROUTINE_TASKS] 
+            : filteredTasks;
+          setPrevTasks(finalTasks);
         } else {
-          setPrevTasks([]);
+          const finalTasks = dateKey >= ROUTINE_START_DATE ? [...ROUTINE_TASKS] : [];
+          setPrevTasks(finalTasks);
         }
       } catch (err) {
         console.error("fetchPrev error:", err);
@@ -456,10 +462,13 @@ const App = () => {
 
           const prevDateKey = allAnnDates.filter(d => d < dKey).pop();
           const rawDailyTasks = prevDateKey && allAnnMap[prevDateKey]?.items ? allAnnMap[prevDateKey].items : [];
-          const dailyTasks = rawDailyTasks.filter(t => {
+          const baseDailyTasks = rawDailyTasks.filter(t => {
             const text = typeof t === 'string' ? t.trim() : (t.text || "").trim();
             return !text.startsWith('※') && !text.startsWith(' ');
           });
+          const dailyTasks = dKey >= ROUTINE_START_DATE 
+            ? [...baseDailyTasks, ...ROUTINE_TASKS] 
+            : baseDailyTasks;
           const isCurrentView = dKey === formatDate(viewDate);
           STUDENTS.forEach(student => {
             const sid = student.id; 
@@ -1041,7 +1050,11 @@ const App = () => {
             {STUDENTS.map(s => {
               const d = attendance[s.id];
               const hw = d?.completedTasks || {};
-              const comp = prevTasks.filter(t => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); return getFinalTaskStatus(s.id, cleanT, d) === 'done' || getFinalTaskStatus(s.id, cleanT, d) === 'late'; }).length;
+              const comp = prevTasks.filter(t => { 
+  const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); 
+  const stat = getFinalTaskStatus(s.id, cleanT, d);
+  return stat === 'done' || stat === 'late' || stat === 'exempt'; 
+}).length;
               const total = prevTasks.length;
               const isFull = comp === total && total > 0;
               const progress = total > 0 ? (comp / total) * 100 : 0;
@@ -1340,9 +1353,96 @@ const App = () => {
                     <div className="grid grid-cols-3 gap-4">{prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); const d = attendance[targetId]; const fStat = getFinalTaskStatus(targetId, cleanT, d); const isManual = !!d?.manualTasks?.[cleanT]; return (<div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors"><span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span><button onClick={() => cycleManualTask(targetId, cleanT)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(fStat, 'task')}{isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}</button></div>)})}</div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-6">{activeStudent ? prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); return (<label key={idx} className={`p-6 rounded-[2rem] border-4 flex items-center gap-6 transition-all active:scale-95 cursor-pointer shadow-sm ${selectedTasks[cleanT] ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}><input type="checkbox" checked={!!selectedTasks[cleanT]} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-10 h-10 accent-blue-600 cursor-pointer" /><span className="text-4xl font-black leading-tight">{cleanT}</span></label>)}) : (<div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">{(() => { const d = attendance[targetId]; const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, typeof t === 'string' ? t.trim() : t.text.trim(), d) === 'missing'); const isAllDone = missingTasks.length === 0 && prevTasks.length > 0; return isAllDone ? (<div className="flex flex-col items-center gap-6 animate-fade-in my-auto"><Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" /><p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p></div>) : (<div className="grid grid-cols-3 gap-6 w-full px-4"><div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4"><XOctagon size={48} className="text-red-600" /><p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p></div>{missingTasks.map((t, idx) => (<div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm"><span className="text-4xl font-black text-red-700">{typeof t === 'string' ? t.trim() : t.text.trim()}</span></div>))}</div>); })()}</div>)}</div>
+                  activeStudent ? (() => {
+  // 將任務分流為：作業（前半段）與自主常規（後半段）
+  const assignmentTasks = prevTasks.filter(t => {
+    const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
+    return !ROUTINE_TASKS.includes(cleanT);
+  });
+  const routineTasks = prevTasks.filter(t => {
+    const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
+    return ROUTINE_TASKS.includes(cleanT);
+  });
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* 上半部：昨日指派作業 */}
+      <div className="bg-slate-50 p-6 rounded-[2.5rem] border-2 border-slate-200">
+        <h4 className="text-3xl font-black text-sky-800 mb-4 flex items-center gap-3">
+          📝 昨日指派作業
+        </h4>
+        {assignmentTasks.length > 0 ? (
+          <div className="grid grid-cols-3 gap-4">
+            {assignmentTasks.map((t, idx) => {
+              const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
+              const isChecked = !!selectedTasks[cleanT];
+              return (
+                <label key={idx} className={`p-5 rounded-2xl border-4 flex items-center gap-4 transition-all active:scale-95 cursor-pointer shadow-sm ${isChecked ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}>
+                  <input type="checkbox" checked={isChecked} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-9 h-9 accent-blue-600 cursor-pointer" />
+                  <span className="text-3xl font-black leading-tight truncate">{cleanT}</span>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-2xl font-bold text-slate-400 bg-white rounded-2xl border border-slate-200">
+            🌱 昨日無特別指派作業
+          </div>
+        )}
+      </div>
+
+      {/* 下半部：自主常規檢核（固定3項） */}
+      {routineTasks.length > 0 && (
+        <div className="bg-amber-50/60 p-6 rounded-[2.5rem] border-2 border-amber-200">
+          <h4 className="text-3xl font-black text-amber-800 mb-4 flex items-center gap-3">
+            ⚓ 每日自主常規
+          </h4>
+          <div className="grid grid-cols-3 gap-4">
+            {routineTasks.map((t, idx) => {
+              const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
+              const isChecked = !!selectedTasks[cleanT];
+              return (
+                <label key={idx} className={`p-5 rounded-2xl border-4 flex items-center gap-4 transition-all active:scale-95 cursor-pointer shadow-sm ${isChecked ? 'bg-amber-100 border-amber-500 text-amber-900 shadow-inner' : 'bg-white border-amber-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50/50'}`}>
+                  <input type="checkbox" checked={isChecked} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-9 h-9 accent-amber-600 cursor-pointer" />
+                  <span className="text-3xl font-black leading-tight truncate">{cleanT}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+})() : (
+  <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
+    {(() => {
+      const d = attendance[targetId];
+      const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, typeof t === 'string' ? t.trim() : t.text.trim(), d) === 'missing');
+      const isAllDone = missingTasks.length === 0 && prevTasks.length > 0;
+      return isAllDone ? (
+        <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
+          <Smile size={200} className="text-blue-500 drop-shadow-xl animate-bounce" />
+          <p className="text-6xl font-black text-blue-600 tracking-wider">今日任務已繳交</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-6 w-full px-4">
+          <div className="col-span-3 border-b-4 border-red-100 pb-4 mb-4 flex items-center gap-4">
+            <XOctagon size={48} className="text-red-600" />
+            <p className="text-5xl font-black text-red-600">目前尚有缺交任務：</p>
+          </div>
+          {missingTasks.map((t, idx) => (
+            <div key={idx} className="p-8 bg-red-50 border-[3px] border-red-500 rounded-[2.5rem] flex items-center gap-6 shadow-sm">
+              <span className="text-4xl font-black text-red-700">{typeof t === 'string' ? t.trim() : t.text.trim()}</span>
+            </div>
+          ))}
+        </div>
+      );
+    })()}
+  </div>
+)
                 )}
               </div>
+
               {activeStudent && (() => {
                 const targetDateStr = formatDate(viewDate);
                 const todayStr = formatDate(new Date());
