@@ -439,6 +439,18 @@ const App = () => {
 
     return 'missing';
   };
+  const getInitialSelectedTasks = (attData) => {
+    const initial = { ...(attData?.completedTasks || {}) };
+    const manual = attData?.manualTasks || {};
+    Object.keys(manual).forEach(taskName => {
+      if (manual[taskName] === 'missing') {
+        delete initial[taskName];
+      } else if (manual[taskName] === 'done' || manual[taskName] === 'late') {
+        initial[taskName] = true;
+      }
+    });
+    return initial;
+  };
   useEffect(() => {
     if (!db || recordedDates.length === 0) return;
     let isMounted = true;
@@ -662,13 +674,13 @@ const App = () => {
           onComplete={() => {
               const s = moodModalStudent;
               setMoodModalStudent(null);
-              setSelectedTasks(attendance[s.id]?.completedTasks || {});
+              setSelectedTasks(getInitialSelectedTasks(attendance[s.id]));
               setActiveStudent(s);
           }}
           onClose={() => {
               const s = moodModalStudent;
               setMoodModalStudent(null);
-              setSelectedTasks(attendance[s.id]?.completedTasks || {});
+              setSelectedTasks(getInitialSelectedTasks(attendance[s.id]));
               setActiveStudent(s);
           }}
         />
@@ -1027,7 +1039,7 @@ const App = () => {
                     if (!d?.mood && canCheckIn && canDoMood) {
                         setMoodModalStudent(s);
                     } else {
-                        setSelectedTasks(d?.completedTasks || {}); 
+                        setSelectedTasks(getInitialSelectedTasks(d)); 
                         setActiveStudent(s); 
                     }
                   }} 
