@@ -232,6 +232,8 @@ const App = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [displayItems, setDisplayItems] = useState([]);
+  const [editingItems, setEditingItems] = useState([]);
+const [isSavingHomework, setIsSavingHomework] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
   const [attendance, setAttendance] = useState({});
   const [activeStudent, setActiveStudent] = useState(null);
