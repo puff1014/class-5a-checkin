@@ -1119,10 +1119,28 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
                       date: dateKey
                     }, { merge: true });
                   } else {
-                      const currentText = (displayItems || []).map(item => typeof item === 'string' ? item : item.text).join('\n');
-                      setAnnouncementText(currentText);
-                      setIsEditing(true);
-                    }
+  const dateKey = formatDate(viewDate);
+
+  if (dateKey >= HOMEWORK_ID_START_DATE) {
+    // 新制：保留原本的作業資料
+    setEditingItems(
+      (displayItems || []).map(item =>
+        typeof item === 'string'
+          ? { text: item, colorIdx: 0 }
+          : { ...item }
+      )
+    );
+  } else {
+    // 舊制：維持原本的文字編輯方式
+    const currentText = (displayItems || [])
+      .map(item => typeof item === 'string' ? item : item.text)
+      .join('\n');
+
+    setAnnouncementText(currentText);
+  }
+
+  setIsEditing(true);
+}
                 }}
                   className="bg-emerald-500 hover:bg-emerald-400 px-8 py-3 rounded-2xl font-black text-2xl shadow-lg transition-transform active:scale-95 text-white"
                 >
