@@ -12,8 +12,16 @@ const ROUTINE_TASKS = ["帶學用品", "複習+預習", "訂正功課"];
 const ROUTINE_START_DATE = '2026-11-01'; // 測試期先設為今天，確認無誤後再改為 2026-11-01
 const HOMEWORK_ID_START_DATE = '2026-11-07';
 const createHomeworkId = () => crypto.randomUUID();
-const isNewHomeworkDate = (dateKey) =>
-  dateKey >= HOMEWORK_ID_START_DATE;
+const isNewHomeworkDate = (dateKey) => dateKey >= HOMEWORK_ID_START_DATE;
+const taskText = (task) => typeof task === 'string' ? task.trim() : (task?.text || '').trim();
+const taskKey = (task) => typeof task === 'object' && task?.id ? task.id : taskText(task);
+const taskKeys = (task) => [taskKey(task), ...(task?.legacyText ? [task.legacyText.trim()] : [])];
+const taskManualStatus = (data, task) => {
+  for (const key of taskKeys(task)) if (data?.manualTasks?.[key]) return data.manualTasks[key];
+  return null;
+};
+const taskCompleted = (data, task) => { const keys=taskKeys(task); if (Object.prototype.hasOwnProperty.call(data?.completedTasks || {}, keys[0])) return data.completedTasks[keys[0]] === true; return keys.slice(1).some(key => data?.completedTasks?.[key] === true); };
+
 const QUICK_TAGS = ["預習數課", "數習", "數日記", "背成+小", "聯絡簿", "國甲", "國乙", "國丙", "國卷", "默寫", "國習", "國隨", "作文", "閱讀B", "念課文*3+解釋*3", "閱讀(  )分+3C(  )分"];
 
 const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -235,6 +243,7 @@ const App = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [displayItems, setDisplayItems] = useState([]);
   const [editingItems, setEditingItems] = useState([]);
+  const [draggedHomeworkIndex, setDraggedHomeworkIndex] = useState(null);
 const [isSavingHomework, setIsSavingHomework] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
   const [attendance, setAttendance] = useState({});
@@ -290,7 +299,7 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
     const text = typeof item === 'string' ? item : item.text;
     const colorIdx = typeof item === 'string' ? 0 : (item.colorIdx || 0);
     const nextIdx = (colorIdx + 1) % highlighterColors.length;
-    newItems[index] = { text, colorIdx: nextIdx };
+    newItems[index] = { ...(typeof item === 'object' ? item : {}), text, colorIdx: nextIdx };
     const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
     const annColName = `${prefix}announcements`;
     await setDoc(doc(db, annColName, dateKey), { items: newItems, date: dateKey }, { merge: true });
@@ -420,8 +429,12 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
   };
 
   const getFinalTaskStatus = (id, originalTaskName, attData) => {
-    const cleanName = typeof originalTaskName === 'string' ? originalTaskName.trim() : (originalTaskName?.text?.trim() || "");
-    if (attData?.manualTasks?.[cleanName]) return attData.manualTasks[cleanName];
+    const cleanName = taskText(originalTaskName);
+    const manual = taskManualStatus(attData, originalTaskName);
+    if (manual) return manual;
+    if (taskCompleted(attData, originalTaskName)) return isAutoTaskLate(id, attData?.lastActionTime) ? 'late' : 'done';
+    // 有固定 ID 的新制作業不能以模糊名稱比對，避免新項目誤判為已完成。
+    if (typeof originalTaskName === 'object' && originalTaskName?.id) return 'missing';
     
     const hw = attData?.completedTasks || {};
     
@@ -515,7 +528,7 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
               let missingCount = 0; let lateCount = 0;
               dailyTasks.forEach(t => {
                 const cleanTask = typeof t === 'string' ? t.trim() : t.text.trim();
-                const finalTask = getFinalTaskStatus(sid, cleanTask, d);
+                const finalTask = getFinalTaskStatus(sid, t, d);
                 if (finalTask === 'missing') {
                   missingCount++;
                   stats[sid].issues.push(`${dKey.slice(5)}: ${cleanTask} (缺交)`);
@@ -556,10 +569,10 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
   const cycleManualTask = async (studentId, taskName) => {
     if (!user) return;
     const dateKey = formatDate(viewDate);
-    const cleanT = taskName.trim();
+    const cleanT = taskKey(taskName);
     const d = attendance[studentId] || {};
     const currentManualTasks = d.manualTasks || {};
-    const currentStatus = currentManualTasks[cleanT] || 'auto';
+    const currentStatus = taskManualStatus(d, taskName) || 'auto';
     const cycle = ['auto', 'done', 'late', 'missing', 'exempt'];
     const nextStatus = cycle[(cycle.indexOf(currentStatus) + 1) % cycle.length];
     const updatedTasks = { ...currentManualTasks };
@@ -1070,7 +1083,7 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
               const hw = d?.completedTasks || {};
               const comp = prevTasks.filter(t => { 
   const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); 
-  const stat = getFinalTaskStatus(s.id, cleanT, d);
+  const stat = getFinalTaskStatus(s.id, t, d);
   return stat === 'done' || stat === 'late' || stat === 'exempt'; 
 }).length;
               const total = prevTasks.length;
@@ -1108,42 +1121,37 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
               {user && (
                 <button 
                   onClick={async () => {
-                  if (isEditing) {
-                    setIsEditing(false);
-                    const dateKey = formatDate(viewDate);
-                    const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
-                    const annColName = `${prefix}announcements`;
-                    const newItems = announcementText.split('\n')
-                      .filter(Boolean)
-                      .map(t => ({ text: t.trim(), colorIdx: 0 }));
-                    await setDoc(doc(db, annColName, dateKey), {
-                      items: newItems,
-                      date: dateKey
-                    }, { merge: true });
-                  } else {
-  const dateKey = formatDate(viewDate);
-
-  if (dateKey >= HOMEWORK_ID_START_DATE) {
-    // 新制：保留原本的作業資料
-    setEditingItems(
-      (displayItems || []).map(item =>
-        typeof item === 'string'
-          ? { text: item, colorIdx: 0 }
-          : { ...item }
-      )
-    );
-  } else {
-    // 舊制：維持原本的文字編輯方式
-    const currentText = (displayItems || [])
-      .map(item => typeof item === 'string' ? item : item.text)
-      .join('\n');
-
-    setAnnouncementText(currentText);
-  }
-
-  setIsEditing(true);
-}
-                }}
+                    if (isSavingHomework) return;
+                    if (isEditing) {
+                      setIsSavingHomework(true);
+                      try {
+                        const dateKey = formatDate(viewDate);
+                        const prefix = selectedAcademicYear === '114' ? '' : `${selectedAcademicYear}_`;
+                        const annColName = `${prefix}announcements`;
+                        const newItems = isNewHomeworkDate(dateKey)
+                          ? editingItems.filter(item => taskText(item)).map(item => ({
+                              ...item, id: item.id || createHomeworkId(), text: taskText(item), colorIdx: item.colorIdx ?? 0
+                            }))
+                          : announcementText.split('\n').filter(t => t.trim()).map(t => ({text: t.trim(), colorIdx: 0}));
+                        await setDoc(doc(db, annColName, dateKey), {items: newItems, date: dateKey}, {merge: true});
+                        setIsEditing(false);
+                      } catch (error) {
+                        console.error('儲存作業失敗', error);
+                        alert('儲存失敗，編輯內容仍保留，請確認網路後重試。');
+                      } finally { setIsSavingHomework(false); }
+                    } else {
+                      const dateKey = formatDate(viewDate);
+                      if (isNewHomeworkDate(dateKey)) {
+                        setEditingItems((displayItems || []).map(item => {
+                          const base = typeof item === 'string' ? {text:item,colorIdx:0} : {...item};
+                          return base.id ? base : {...base, id:createHomeworkId(), legacyText:taskText(base)};
+                        }));
+                      } else {
+                        setAnnouncementText((displayItems || []).map(taskText).join('\n'));
+                      }
+                      setIsEditing(true);
+                    }
+                  }}
                   className="bg-emerald-500 hover:bg-emerald-400 px-8 py-3 rounded-2xl font-black text-2xl shadow-lg transition-transform active:scale-95 text-white"
                 >
                   {isEditing ? '儲存任務' : '編輯任務'}
@@ -1153,12 +1161,27 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
           </div>
           {isEditing && (
             <div className="flex flex-wrap gap-2 mb-4 animate-fade-in pr-2 shrink-0 relative z-10">
-              {QUICK_TAGS.map(t => <button key={t} onClick={() => setAnnouncementText(p => p ? p + '\n' + t : t)} className="px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-xl font-bold hover:bg-white/30 transition-all">{t}</button>)}
+              {QUICK_TAGS.map(t => <button key={t} onClick={() => isNewHomeworkDate(formatDate(viewDate)) ? setEditingItems(p => [...p, {id:createHomeworkId(), text:t, colorIdx:0}]) : setAnnouncementText(p => p ? p + '\n' + t : t)} className="px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-xl font-bold hover:bg-white/30 transition-all">{t}</button>)}
             </div>
           )}
           <div className="flex-1 bg-black/20 rounded-[2.5rem] p-8 shadow-inner relative z-10 backdrop-blur-sm border border-white/5 overflow-y-auto">
             {isEditing ? (
-              <textarea value={announcementText || (displayItems || []).map(i => typeof i === 'string' ? i : i?.text || '').filter(Boolean).join('\n')} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
+              isNewHomeworkDate(formatDate(viewDate)) ? (
+                <div className="flex flex-col gap-3">
+                  {editingItems.map((item, idx) => (
+                    <div key={item.id} className="flex items-center gap-3 bg-white/10 rounded-2xl p-3"
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); if (draggedHomeworkIndex === null) return; setEditingItems(old => {const next=[...old]; const [moved]=next.splice(draggedHomeworkIndex,1); next.splice(idx,0,moved); return next;}); setDraggedHomeworkIndex(null); }}>
+                      <span draggable onDragStart={() => setDraggedHomeworkIndex(idx)} onDragEnd={() => setDraggedHomeworkIndex(null)} className="cursor-grab touch-none p-2" title="拖曳排序"><GripVertical size={28}/></span>
+                      <input value={item.text} onChange={e => setEditingItems(old => old.map((t,i) => i === idx ? {...t,text:e.target.value} : t))} className="min-w-0 flex-1 rounded-xl bg-white text-slate-900 p-3 text-2xl font-bold" placeholder="作業名稱或備註" />
+                      <button onClick={() => setEditingItems(old => old.filter((_,i) => i !== idx))} className="p-2 rounded-xl bg-rose-600 text-white" title="刪除這一項"><Trash2 size={26}/></button>
+                    </div>
+                  ))}
+                  <button onClick={() => setEditingItems(old => [...old,{id:createHomeworkId(),text:'',colorIdx:0}])} className="rounded-xl bg-sky-600 p-4 text-2xl font-bold text-white flex items-center justify-center gap-2"><Plus/> 新增作業或備註</button>
+                </div>
+              ) : (
+                <textarea value={announcementText} onChange={e => setAnnouncementText(e.target.value)} style={{ fontFamily: useBiauKai ? '"BiauKai", "DFKai-SB", "標楷體", serif' : 'inherit' }} className="flex-1 bg-transparent text-white outline-none leading-relaxed text-4xl w-full min-h-[400px] font-black" placeholder="輸入今日任務..." />
+              )
             ) : (
               <div 
                 style={{ 
@@ -1386,7 +1409,7 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
                 ) : viewOnlyStudent && user ? (
                   <div className="flex flex-col gap-6">
                     <div className="bg-slate-50 rounded-[2rem] p-6 border-2 border-slate-200 flex items-center gap-6"><span className="text-4xl font-black text-slate-700">出席狀態：</span><button onClick={() => cycleManualAtt(targetId)} className="flex items-center gap-3 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(getFinalAttStatus(targetId, attendance[targetId]), 'att')}{attendance[targetId]?.manualAtt && <span className="text-xl font-bold text-indigo-500 flex items-center gap-1 bg-indigo-50 px-3 py-1 rounded-full"><Edit3 size={20}/> 手動修改</span>}</button></div>
-                    <div className="grid grid-cols-3 gap-4">{prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); const d = attendance[targetId]; const fStat = getFinalTaskStatus(targetId, cleanT, d); const isManual = !!d?.manualTasks?.[cleanT]; return (<div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors"><span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span><button onClick={() => cycleManualTask(targetId, cleanT)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(fStat, 'task')}{isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}</button></div>)})}</div>
+                    <div className="grid grid-cols-3 gap-4">{prevTasks.map((t, idx) => { const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || ""); const d = attendance[targetId]; const fStat = getFinalTaskStatus(targetId, t, d); const isManual = !!taskManualStatus(d, t); return (<div key={idx} className="bg-white border-4 border-slate-100 rounded-[2rem] p-6 flex justify-between items-center shadow-sm hover:border-sky-200 transition-colors"><span className="text-4xl font-black text-slate-800 truncate pr-4">{cleanT}</span><button onClick={() => cycleManualTask(targetId, t)} className="flex items-center gap-3 shrink-0 transition-transform active:scale-95 hover:opacity-80">{getStatusDisplay(fStat, 'task')}{isManual && <span className="text-lg text-indigo-500"><Edit3 size={18}/></span>}</button></div>)})}</div>
                   </div>
                 ) : (
                   activeStudent ? (() => {
@@ -1411,10 +1434,11 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
           <div className="grid grid-cols-3 gap-4">
             {assignmentTasks.map((t, idx) => {
               const cleanT = typeof t === 'string' ? t.trim() : (t.text?.trim() || "");
-              const isChecked = !!selectedTasks[cleanT];
+              const key = taskKey(t);
+              const isChecked = Object.prototype.hasOwnProperty.call(selectedTasks,key) ? !!selectedTasks[key] : (!!t?.legacyText && !!selectedTasks[t.legacyText]);
               return (
                 <label key={idx} className={`p-5 rounded-2xl border-4 flex items-center gap-4 transition-all active:scale-95 cursor-pointer shadow-sm ${isChecked ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-inner' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-slate-50'}`}>
-                  <input type="checkbox" checked={isChecked} onChange={(e) => setSelectedTasks({...selectedTasks, [cleanT]: e.target.checked})} className="w-9 h-9 accent-blue-600 cursor-pointer" />
+                  <input type="checkbox" checked={isChecked} onChange={(e) => setSelectedTasks(prev => ({...prev, [key]: e.target.checked, ...(t?.legacyText ? {[t.legacyText]: false} : {})}))} className="w-9 h-9 accent-blue-600 cursor-pointer" />
                   <span className="text-3xl font-black leading-tight truncate">{cleanT}</span>
                 </label>
               );
@@ -1453,7 +1477,7 @@ const [isSavingHomework, setIsSavingHomework] = useState(false);
   <div className="col-span-3 flex flex-col items-center justify-center py-10 w-full h-full">
     {(() => {
       const d = attendance[targetId];
-      const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, typeof t === 'string' ? t.trim() : t.text.trim(), d) === 'missing');
+      const missingTasks = prevTasks.filter(t => getFinalTaskStatus(targetId, t, d) === 'missing');
       const isAllDone = missingTasks.length === 0 && prevTasks.length > 0;
       return isAllDone ? (
         <div className="flex flex-col items-center gap-6 animate-fade-in my-auto">
